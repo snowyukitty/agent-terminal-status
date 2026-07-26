@@ -21,7 +21,9 @@ npm run lint
 `npm test` builds the production output and verifies rendered HTML, core copy,
 accessibility markers, fixed-origin metadata, portable asset paths, self-hosted
 fonts, canonical repository links, and the absence of starter or persistence
-scaffolding.
+scaffolding. Production builds first remove only the site's resolved `dist` and
+`.vinext` generated directories so deleted or renamed assets cannot survive
+from an earlier build or cache.
 
 ## Structure
 

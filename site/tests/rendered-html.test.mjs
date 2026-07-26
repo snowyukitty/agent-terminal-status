@@ -93,12 +93,17 @@ test("metadata origin is fixed even with untrusted forwarding headers", async ()
 test("build output is portable and self-hosts its fonts", async () => {
   const dist = fileURLToPath(new URL("../dist", import.meta.url));
   const artifacts = await textBuildArtifacts(dist);
-  const [contents, layout] = await Promise.all([
+  const [contents, layout, packageJson] = await Promise.all([
     Promise.all(artifacts.map((path) => readFile(path, "utf8"))),
     readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../package.json", import.meta.url), "utf8"),
   ]);
   const bundle = contents.join("\n");
 
+  assert.match(
+    JSON.parse(packageJson).scripts.build,
+    /^node build\/clean-dist\.mjs && /,
+  );
   assert.doesNotMatch(
     bundle,
     /file:\/\/|(?:^|[^A-Za-z0-9])[A-Za-z]:[\\/]|\/home\/runner\/work\//im,
@@ -110,6 +115,9 @@ test("build output is portable and self-hosts its fonts", async () => {
   await Promise.all([
     access(new URL("../dist/client/fonts/Geist-Variable.woff2", import.meta.url)),
     access(new URL("../dist/client/fonts/GeistMono-Variable.woff2", import.meta.url)),
+    assert.rejects(
+      access(new URL("../dist/client/assets/_vinext_fonts", import.meta.url)),
+    ),
   ]);
 });
 
