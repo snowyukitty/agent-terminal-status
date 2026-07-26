@@ -22,6 +22,15 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - run: python -m unittest discover -s tests -p "test_*.py" -v
+      - name: Smoke-test POSIX install wrapper
+        if: runner.os != 'Windows' && matrix.python-version == '3.13'
+        shell: bash
+        run: |
+          config_dir="$RUNNER_TEMP/ats-claude-config"
+          sh scripts/install.sh --config-dir "$config_dir"
+          test -f "$config_dir/agent-terminal-status/statusline.py"
+          "$config_dir/agent-terminal-status/uninstall.sh"
+          test ! -d "$config_dir/agent-terminal-status"
 
   powershell:
     name: ${{ matrix.shell }}

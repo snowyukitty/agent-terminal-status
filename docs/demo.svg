@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="318" viewBox="0 0 1120 318" role="img" aria-labelledby="title desc">
+  <title id="title">agent-terminal-status terminal demonstration</title>
+  <desc id="desc">A dark terminal shows compact workspace identity for repository, nested directory, detached HEAD, non-Git, and narrow layouts.</desc>
+  <rect width="1120" height="318" rx="18" fill="#0b0f14"/>
+  <rect x="1" y="1" width="1118" height="316" rx="17" fill="none" stroke="#29313d" stroke-width="2"/>
+  <circle cx="31" cy="29" r="6" fill="#ff6b6b"/>
+  <circle cx="52" cy="29" r="6" fill="#f6c453"/>
+  <circle cx="73" cy="29" r="6" fill="#53c27d"/>
+  <text x="102" y="35" fill="#8993a4" font-family="Cascadia Code, SFMono-Regular, Consolas, monospace" font-size="17">Claude Code — workspace identity</text>
+  <line x1="0" y1="56" x2="1120" y2="56" stroke="#202733"/>
+  <g font-family="Cascadia Code, SFMono-Regular, Consolas, monospace" font-size="20">
+    <text x="30" y="94" fill="#748094">repository</text>
+    <text x="190" y="94" fill="#d8dee9">agent-terminal-status · main · snowy-atlas</text>
+    <text x="30" y="136" fill="#748094">nested cwd</text>
+    <text x="190" y="136" fill="#d8dee9">agent-terminal-status/docs/research · feature/identity · snowy-atlas</text>
+    <text x="30" y="178" fill="#748094">detached</text>
+    <text x="190" y="178" fill="#d8dee9">agent-terminal-status · detached@3f21a7c · snowy-atlas</text>
+    <text x="30" y="220" fill="#748094">non-Git</text>
+    <text x="190" y="220" fill="#d8dee9">~/scratch/notes · snowy-atlas</text>
+    <text x="30" y="262" fill="#748094">narrow</text>
+    <text x="190" y="262" fill="#d8dee9">agent-term…cs/research · snowy-atlas</text>
+  </g>
+  <text x="30" y="296" fill="#566172" font-family="Cascadia Code, SFMono-Regular, Consolas, monospace" font-size="14">deterministic output from scripts/demo.py</text>
+</svg>

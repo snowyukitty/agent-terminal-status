@@ -1,0 +1,159 @@
+# Claude Code upstream evidence packet
+
+Prepared: **2026-07-27**.
+
+## Do not file a new issue
+
+Equivalent requests already exist:
+
+- [#70132 — Display current working directory in CLI prompt](https://github.com/anthropics/claude-code/issues/70132)
+- [#81298 — Display current working directory/project context](https://github.com/anthropics/claude-code/issues/81298)
+- [#74344 — Show working subfolder, not just Git root](https://github.com/anthropics/claude-code/issues/74344)
+
+The public feature template requires a duplicate search. A new broad "workspace
+identity layer" issue would fragment the strongest immediate request. The
+recommended eventual action is a focused evidence comment on #70132, with a
+cross-reference to #74344 for monorepo behavior.
+
+Do not submit the draft below until public artifact links and real-use evidence
+are available.
+
+## Problem
+
+Developers increasingly run several Claude Code sessions across repositories,
+monorepo subfolders, branches, worktrees, terminals, and machines. The
+conversation can look correct while an action targets the wrong workspace.
+Asking for `pwd`, manually renaming every session, or inspecting another prompt
+adds friction and can itself become stale.
+
+Directory identity is unusually important because it tells the user where the
+next filesystem or Git action will land.
+
+## Prototype evidence
+
+`agent-terminal-status` implements the behavior through Claude Code's existing
+custom status-line command:
+
+```text
+agent-terminal-status/docs/research · feature/identity · snowy-atlas
+```
+
+Prototype behavior:
+
+- uses Claude's `workspace.current_dir`, not the command process cwd;
+- shows `repo-name/actual/relative/subfolder`;
+- falls back cleanly outside Git;
+- handles detached HEAD and linked worktrees;
+- shortens by terminal cell width, including CJK paths;
+- drops branch before machine when narrow;
+- performs no network calls;
+- bounds Git work to 150 ms and preserves path identity on timeout.
+
+Verification currently includes Python tests plus the same behavioral suite in
+Windows PowerShell 5.1 and PowerShell 7. Scenarios cover malformed input,
+missing Git, spaces, non-ASCII paths, worktrees, detached HEAD, narrow
+terminals, installer rollback, and later user settings edits.
+
+Reference performance, including a fresh process and Git probe:
+
+| Adapter | Git p50 | Git p95 |
+| --- | ---: | ---: |
+| Python 3.12 | 62.3 ms | 65.5 ms |
+| Windows PowerShell 5.1 | 279.4 ms | 283.2 ms |
+
+See [performance methodology](performance.md) and the
+[deterministic demo](demo.svg).
+
+What this does **not** yet prove:
+
+- prevalence across a broad user sample;
+- the best default for hostname visibility;
+- real latency on slow endpoints and network-mounted repositories;
+- persistence expectations during every active-turn UI state.
+
+## Proposed native experience
+
+Keep the native request narrower than the prototype:
+
+1. Always show the actual current workspace directory in the interactive CLI.
+2. Inside Git, render the repository name plus cwd relative to its root.
+3. Outside Git, render a home-relative path where possible.
+4. Adapt to width by middle-shortening while retaining the directory leaf.
+5. Preserve the identity through active processing and temporary UI states.
+6. Allow users to disable or replace the segment through existing status/footer
+   configuration.
+
+Example:
+
+```text
+agent-terminal-status/docs/research
+```
+
+Branch already exists as a familiar development signal in many footer designs.
+Hostname is valuable for SSH/containers but exposes naming information and is
+less universally needed; it should be an optional native segment, not part of
+the minimum request.
+
+The native implementation should use Claude Code's internal workspace state and
+Git context rather than spawning a status command. That avoids process startup,
+trust gates, custom-script disappearance, quoting differences, and settings
+conflicts.
+
+## UX cases to attach
+
+Use a compact comparison containing:
+
+1. two repositories with the same task language;
+2. two monorepo subfolders on the same branch;
+3. main worktree and a linked worktree;
+4. local Windows and an SSH/container session;
+5. a 40-column terminal;
+6. a path with spaces and non-ASCII characters;
+7. a non-Git scratch directory.
+
+For each, show the current Claude Code UI and the same session with persistent
+identity. Do not include private real paths or hostnames.
+
+## Ready-to-adapt comment for #70132
+
+> I built and tested a small external prototype for this exact workflow. The
+> most useful behavior was not just the Git root: it was
+> `repo-name/actual/relative/cwd`, sourced from `workspace.current_dir`.
+>
+> That distinguishes parallel sessions in different monorepo subfolders while
+> remaining compact at repository root. Outside Git it falls back to a
+> home-relative path. At narrow widths it middle-shortens the path and removes
+> optional branch/machine segments first.
+>
+> The prototype covers Windows PowerShell, macOS/Linux through Python, linked
+> worktrees, detached HEAD, non-Git directories, spaces, non-ASCII paths, and
+> missing/slow Git. Complete-command p95 on the reference machine was 65.5 ms
+> for Python and 283.2 ms for the no-dependency Windows PowerShell adapter.
+>
+> A native segment could be much smaller and faster because Claude Code already
+> owns workspace and Git state. My suggested minimum is: always-visible actual
+> cwd, repository-relative when applicable, adaptive middle shortening, and an
+> existing config path to disable/replace it. Hostname can remain opt-in.
+>
+> Prototype/demo, tests, measurements, and edge cases: **[PUBLIC URL REQUIRED]**.
+> Related monorepo-subfolder request: #74344.
+
+Keep the posted comment shorter if the issue has evolved. Re-read the full
+thread immediately before posting and avoid repeating newer evidence.
+
+## Evidence gate
+
+- [x] Working external prototype
+- [x] Reproducible renderer tests
+- [x] Windows PowerShell 5.1 and PowerShell 7 coverage
+- [x] Git/non-Git/worktree/detached/non-ASCII/narrow scenarios
+- [x] Complete-process latency measurements
+- [x] Duplicate and contribution-surface research
+- [ ] One week of regular multi-session use
+- [ ] Real Claude Code screenshots on Windows and POSIX
+- [ ] SSH, WSL, and container observations
+- [ ] Sanitized public repository/demo URL
+- [ ] Fresh duplicate/thread review immediately before posting
+
+Until those unchecked items are resolved, this document is preparation, not a
+claim that an upstream submission is ready.
