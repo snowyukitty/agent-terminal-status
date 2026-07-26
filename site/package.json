@@ -1,0 +1,39 @@
+{
+  "name": "agent-terminal-status-site",
+  "version": "0.1.0",
+  "private": true,
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "scripts": {
+    "dev": "vinext dev",
+    "build": "vinext build",
+    "start": "vinext start",
+    "test": "npm run build && node --test tests/rendered-html.test.mjs",
+    "lint": "oxlint app worker build tests --deny-warnings"
+  },
+  "dependencies": {
+    "next": "16.2.12",
+    "react": "19.2.8",
+    "react-dom": "19.2.8"
+  },
+  "devDependencies": {
+    "@cloudflare/vite-plugin": "1.47.0",
+    "@types/node": "22.19.19",
+    "@types/react": "19.2.17",
+    "@types/react-dom": "19.2.3",
+    "@vitejs/plugin-react": "6.0.4",
+    "@vitejs/plugin-rsc": "0.5.30",
+    "oxlint": "1.75.0",
+    "react-server-dom-webpack": "19.2.8",
+    "typescript": "5.9.3",
+    "vinext": "0.0.50",
+    "vite": "8.1.5",
+    "wrangler": "4.114.0"
+  },
+  "overrides": {
+    "postcss": "8.5.23",
+    "sharp": "0.35.3"
+  },
+  "type": "module"
+}

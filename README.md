@@ -19,6 +19,10 @@ The repository and actual nested working directory stay visible. Git branch and
 machine identity are secondary: they appear when space allows and disappear
 before the path on narrow terminals.
 
+The project website is built from the frontend-only source in
+[`site/`](site/README.md). Its public production URL is also listed in the
+GitHub repository sidebar.
+
 ## Quick start
 
 ### Windows PowerShell

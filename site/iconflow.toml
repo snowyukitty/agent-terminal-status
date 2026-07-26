@@ -1,0 +1,42 @@
+# IconFlow project brief and deterministic build contract.
+# Relative paths are resolved from this file.
+schema_version = 1
+
+[project]
+name = "agent-terminal-status"
+master = "brand/master.svg"
+output = "public"
+casebook = "casebook"
+
+[brief]
+app_intent = "Continuously reveal a coding agent's current workspace identity."
+user_job = "Recognize the active project or directory at a glance before acting."
+essence = "located"
+personality = ["calm", "precise", "quiet"]
+
+[design]
+palette = ["#111712", "#376B57", "#B8E878", "#F07A4F"]
+cliches = ["terminal chevron", "robot or AI sparkle", "map pin", "bare A monogram"]
+signature_device = "An asymmetric workspace identity tag with a punched locator aperture and stepped path notch."
+device_family = "object-silhouette"
+device_detail = "A vertical identity tag whose right edge steps inward like a filesystem path; one two-pixel aperture marks the current location."
+concept_lens = "object-metaphor"
+
+[build]
+targets = ["web"]
+theme_color = "#111712"
+background_color = "#F2F0E8"
+electron_radius = 0
+tray_ts = false
+tray_svg = ""
+tray_template_mode = "auto"
+color_scheme = "light"
+optimize_png = true
+
+[review]
+status = "pending"
+source_sha256 = ""
+# Review Lab receipt is preferred. For this manual fallback, set status to
+# "approved" and copy the reviewed source hash; `ship` requires every score >= 4.
+scores = {}
+notes = ""

@@ -1,0 +1,38 @@
+{
+  "schema": 1,
+  "source": "master.svg",
+  "source_sha256": "6443128f68166615cc6ea5f29e4b9f48025bd2bc8b6735bd6a0bec17ff7cc22b",
+  "project": "agent-terminal-status",
+  "user_job": "Recognize the active project or directory at a glance before acting.",
+  "essence": "located",
+  "personality": "calm, precise, quiet",
+  "signature_device": "An asymmetric workspace identity tag with a punched locator aperture and stepped path notch.",
+  "cliches": [
+    "terminal chevron",
+    "robot or AI sparkle",
+    "map pin",
+    "bare A monogram"
+  ],
+  "targets": [
+    "web"
+  ],
+  "build": {
+    "theme_color": "#111712",
+    "background_color": "#F2F0E8",
+    "electron_radius": 0,
+    "tray_template_mode": "auto",
+    "color_scheme": "light",
+    "tray_source_sha256": null
+  },
+  "warnings": [],
+  "scores": {
+    "legibility": 4,
+    "distinctiveness": 4,
+    "balance": 4,
+    "color": 4,
+    "scalability": 5,
+    "craft": 5
+  },
+  "notes": "The identity-tag silhouette names a concrete object at 16 px. Its punched aperture remains deliberate, while the single stepped edge carries the filesystem-path idea without adding a second glyph. The bake-off rejected the generic folder and monitor-like placard.",
+  "status": "ready"
+}
