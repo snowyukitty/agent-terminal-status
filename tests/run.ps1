@@ -10,6 +10,7 @@ $originalTesting = $env:ATS_TESTING
 $originalMachine = $env:ATS_MACHINE
 $originalColumns = $env:COLUMNS
 $originalAscii = $env:ATS_ASCII
+$originalMaxWidth = $env:ATS_MAX_WIDTH
 $originalBranchMode = $env:ATS_SHOW_BRANCH
 $originalHostMode = $env:ATS_SHOW_HOST
 $unicodeName = ([string][char]0x65E5) + ([char]0x672C) + ([char]0x8A9E)
@@ -127,6 +128,59 @@ try {
         Assert-Equal 'repo | build-box' (Format-AtsStatus $identity) 'ASCII output mismatch.'
         Remove-Item Env:ATS_ASCII -ErrorAction SilentlyContinue
         $env:ATS_SHOW_BRANCH = 'auto'
+        $env:ATS_SHOW_HOST = 'auto'
+    }
+
+    Test-Case 'configured width caps a wider terminal' {
+        $env:COLUMNS = '160'
+        $env:ATS_MAX_WIDTH = '20'
+        $identity = [pscustomobject]@{
+            Cwd = 'C:\work\project\packages\service'
+            Path = 'project/packages/service'
+            Branch = 'main'
+            Machine = 'build-box'
+        }
+        $value = Format-AtsStatus $identity
+        Assert-True ((Get-AtsTextWidth $value) -le 20) 'ATS_MAX_WIDTH was not applied.'
+        Assert-True (-not $value.Contains('build-box')) 'Optional host should be dropped under the configured cap.'
+        Remove-Item Env:ATS_MAX_WIDTH -ErrorAction SilentlyContinue
+    }
+
+    Test-Case 'PowerShell command emits UTF-8 identity' {
+        $payload = '{"workspace":{"current_dir":"C:\\Users\\alex\\\u65e5\u672c\u8a9e"}}'
+        $savedTesting = $env:ATS_TESTING
+        $process = $null
+        try {
+            Remove-Item Env:ATS_TESTING -ErrorAction SilentlyContinue
+            $utf8 = New-Object System.Text.UTF8Encoding($false)
+            $statusPath = Join-Path $root 'src\statusline.ps1'
+            $startInfo = New-Object System.Diagnostics.ProcessStartInfo
+            $startInfo.FileName = (Get-Command powershell -CommandType Application).Source
+            $startInfo.Arguments = '-NoProfile -NonInteractive -ExecutionPolicy Bypass -File "' + $statusPath + '"'
+            $startInfo.UseShellExecute = $false
+            $startInfo.CreateNoWindow = $true
+            $startInfo.RedirectStandardInput = $true
+            $startInfo.RedirectStandardOutput = $true
+            $startInfo.RedirectStandardError = $true
+            $startInfo.StandardOutputEncoding = $utf8
+            $startInfo.StandardErrorEncoding = $utf8
+            $process = New-Object System.Diagnostics.Process
+            $process.StartInfo = $startInfo
+            Assert-True ($process.Start()) 'Could not start the status command.'
+            $inputBytes = $utf8.GetBytes($payload)
+            $process.StandardInput.BaseStream.Write($inputBytes, 0, $inputBytes.Length)
+            $process.StandardInput.BaseStream.Close()
+            $output = $process.StandardOutput.ReadToEnd()
+            $errorOutput = $process.StandardError.ReadToEnd()
+            $process.WaitForExit()
+            Assert-Equal 0 $process.ExitCode "Status command failed: $errorOutput"
+            Assert-True ($output.Contains($unicodeName)) 'Command output lost Unicode cwd.'
+            Assert-True ($output.Contains([string][char]0x00B7)) 'Command output lost the Unicode separator.'
+        }
+        finally {
+            if ($null -ne $process) { $process.Dispose() }
+            $env:ATS_TESTING = $savedTesting
+        }
     }
 
     Test-Case 'Git branch detached HEAD and linked worktree' {
@@ -213,12 +267,127 @@ try {
             }
         }
     }
+
+    Test-Case 'installed command survives Git Bash routing when available' {
+        $gitCommand = Get-Command git -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
+        $gitRoot = if ($null -ne $gitCommand) {
+            Split-Path -Parent (Split-Path -Parent $gitCommand.Source)
+        }
+        else {
+            ''
+        }
+        $gitBash = if (-not [string]::IsNullOrEmpty($gitRoot)) {
+            Join-Path $gitRoot 'bin\bash.exe'
+        }
+        else {
+            ''
+        }
+        if ([string]::IsNullOrEmpty($gitBash) -or -not (Test-Path -LiteralPath $gitBash)) {
+            Write-Output 'SKIP Git Bash routing smoke test: Git Bash not found.'
+            return
+        }
+
+        $temporaryRoot = Join-Path ([IO.Path]::GetTempPath()) ('ats bash ' + [Guid]::NewGuid().ToString('N'))
+        $config = Join-Path $temporaryRoot 'claude config'
+        $savedTesting = $env:ATS_TESTING
+        try {
+            New-Item -ItemType Directory -Path $config -Force | Out-Null
+            & (Join-Path $root 'scripts\install.ps1') -ConfigDir $config | Out-Null
+            $settings = [IO.File]::ReadAllText((Join-Path $config 'settings.json')) | ConvertFrom-Json
+            $payloadCwd = (ConvertTo-AtsSlashPath $root)
+            $payload = '{"workspace":{"current_dir":"' + $payloadCwd + '"}}'
+            $bashScriptPath = Join-Path $temporaryRoot 'invoke-status.sh'
+            $bashScript = "#!/bin/sh`nprintf '%s' '$payload' | " + [string]$settings.statusLine.command + "`n"
+            $encoding = New-Object System.Text.UTF8Encoding($false)
+            [IO.File]::WriteAllText($bashScriptPath, $bashScript, $encoding)
+            Remove-Item Env:ATS_TESTING -ErrorAction SilentlyContinue
+            $output = & $gitBash $bashScriptPath
+            Assert-Equal 0 $LASTEXITCODE 'Installed command failed through Git Bash.'
+            Assert-True (($output -join "`n").Contains('agent-terminal-status')) 'Installed command produced the wrong identity through Git Bash.'
+            & (Join-Path $config 'agent-terminal-status\uninstall.ps1') | Out-Null
+        }
+        finally {
+            $env:ATS_TESTING = $savedTesting
+            if (Test-Path -LiteralPath $temporaryRoot) {
+                $resolvedTemporary = [IO.Path]::GetFullPath($temporaryRoot)
+                $tempBase = [IO.Path]::GetFullPath([IO.Path]::GetTempPath())
+                if (-not $resolvedTemporary.StartsWith($tempBase, [StringComparison]::OrdinalIgnoreCase)) {
+                    throw "Refusing to clean unexpected test path: $resolvedTemporary"
+                }
+                Remove-Item -LiteralPath $resolvedTemporary -Recurse -Force
+            }
+        }
+    }
+
+    Test-Case 'installer refuses invalid settings without changes' {
+        $temporaryRoot = Join-Path ([IO.Path]::GetTempPath()) ('ats-invalid-' + [Guid]::NewGuid().ToString('N'))
+        $config = Join-Path $temporaryRoot 'claude config'
+        try {
+            New-Item -ItemType Directory -Path $config -Force | Out-Null
+            $settingsPath = Join-Path $config 'settings.json'
+            $encoding = New-Object System.Text.UTF8Encoding($false)
+            [IO.File]::WriteAllText($settingsPath, '{ invalid', $encoding)
+
+            $blocked = $false
+            try {
+                & (Join-Path $root 'scripts\install.ps1') -ConfigDir $config 2>&1 | Out-Null
+            }
+            catch {
+                $blocked = $true
+            }
+            Assert-True $blocked 'Invalid JSON should block installation.'
+            Assert-Equal '{ invalid' ([IO.File]::ReadAllText($settingsPath)) 'Invalid settings were modified.'
+            Assert-True (-not (Test-Path -LiteralPath (Join-Path $config 'agent-terminal-status'))) 'Install files were created after invalid settings.'
+        }
+        finally {
+            if (Test-Path -LiteralPath $temporaryRoot) {
+                $resolvedTemporary = [IO.Path]::GetFullPath($temporaryRoot)
+                $tempBase = [IO.Path]::GetFullPath([IO.Path]::GetTempPath())
+                if (-not $resolvedTemporary.StartsWith($tempBase, [StringComparison]::OrdinalIgnoreCase)) {
+                    throw "Refusing to clean unexpected test path: $resolvedTemporary"
+                }
+                Remove-Item -LiteralPath $resolvedTemporary -Recurse -Force
+            }
+        }
+    }
+
+    Test-Case 'uninstall preserves a later user statusLine edit' {
+        $temporaryRoot = Join-Path ([IO.Path]::GetTempPath()) ('ats-later-edit-' + [Guid]::NewGuid().ToString('N'))
+        $config = Join-Path $temporaryRoot 'claude config'
+        try {
+            New-Item -ItemType Directory -Path $config -Force | Out-Null
+            $settingsPath = Join-Path $config 'settings.json'
+            $encoding = New-Object System.Text.UTF8Encoding($false)
+            [IO.File]::WriteAllText($settingsPath, '{"theme":"dark"}', $encoding)
+            & (Join-Path $root 'scripts\install.ps1') -ConfigDir $config | Out-Null
+
+            $settings = [IO.File]::ReadAllText($settingsPath) | ConvertFrom-Json
+            $settings.statusLine.command = 'new-user-command'
+            [IO.File]::WriteAllText($settingsPath, ($settings | ConvertTo-Json -Depth 10), $encoding)
+
+            & (Join-Path $config 'agent-terminal-status\uninstall.ps1') 3>$null | Out-Null
+            $after = [IO.File]::ReadAllText($settingsPath) | ConvertFrom-Json
+            Assert-Equal 'new-user-command' $after.statusLine.command 'Uninstall overwrote a later user edit.'
+            Assert-Equal 'dark' $after.theme 'Uninstall changed an unrelated setting.'
+        }
+        finally {
+            if (Test-Path -LiteralPath $temporaryRoot) {
+                $resolvedTemporary = [IO.Path]::GetFullPath($temporaryRoot)
+                $tempBase = [IO.Path]::GetFullPath([IO.Path]::GetTempPath())
+                if (-not $resolvedTemporary.StartsWith($tempBase, [StringComparison]::OrdinalIgnoreCase)) {
+                    throw "Refusing to clean unexpected test path: $resolvedTemporary"
+                }
+                Remove-Item -LiteralPath $resolvedTemporary -Recurse -Force
+            }
+        }
+    }
 }
 finally {
     if ($null -eq $originalTesting) { Remove-Item Env:ATS_TESTING -ErrorAction SilentlyContinue } else { $env:ATS_TESTING = $originalTesting }
     if ($null -eq $originalMachine) { Remove-Item Env:ATS_MACHINE -ErrorAction SilentlyContinue } else { $env:ATS_MACHINE = $originalMachine }
     if ($null -eq $originalColumns) { Remove-Item Env:COLUMNS -ErrorAction SilentlyContinue } else { $env:COLUMNS = $originalColumns }
     if ($null -eq $originalAscii) { Remove-Item Env:ATS_ASCII -ErrorAction SilentlyContinue } else { $env:ATS_ASCII = $originalAscii }
+    if ($null -eq $originalMaxWidth) { Remove-Item Env:ATS_MAX_WIDTH -ErrorAction SilentlyContinue } else { $env:ATS_MAX_WIDTH = $originalMaxWidth }
     if ($null -eq $originalBranchMode) { Remove-Item Env:ATS_SHOW_BRANCH -ErrorAction SilentlyContinue } else { $env:ATS_SHOW_BRANCH = $originalBranchMode }
     if ($null -eq $originalHostMode) { Remove-Item Env:ATS_SHOW_HOST -ErrorAction SilentlyContinue } else { $env:ATS_SHOW_HOST = $originalHostMode }
 }

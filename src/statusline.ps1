@@ -80,7 +80,8 @@ function Get-AtsPayloadCwd {
 
     $data = $null
     if (-not [string]::IsNullOrWhiteSpace($Json)) {
-        try { $data = $Json | ConvertFrom-Json -ErrorAction Stop } catch { $data = $null }
+        $cleanJson = $Json.TrimStart([char]0xFEFF)
+        try { $data = $cleanJson | ConvertFrom-Json -ErrorAction Stop } catch { $data = $null }
     }
 
     $candidates = New-Object System.Collections.Generic.List[string]
@@ -253,17 +254,21 @@ function Test-AtsTruthy {
 }
 
 function Get-AtsMaxWidth {
-    $width = $script:AtsDefaultMaxWidth
-    foreach ($candidate in @($env:ATS_MAX_WIDTH, $env:COLUMNS)) {
-        if ([string]::IsNullOrWhiteSpace($candidate)) { continue }
-        $parsed = 0
-        if ([int]::TryParse($candidate, [ref]$parsed)) {
-            $width = $parsed
-            break
-        }
+    $terminalWidth = 512
+    $configuredCap = $script:AtsDefaultMaxWidth
+    $parsed = 0
+    if (-not [string]::IsNullOrWhiteSpace($env:COLUMNS) -and
+        [int]::TryParse($env:COLUMNS, [ref]$parsed)) {
+        $terminalWidth = $parsed
     }
-    $width = [Math]::Max(12, [Math]::Min($width, 512))
-    return [Math]::Min($width, $script:AtsDefaultMaxWidth)
+    $parsed = 0
+    if (-not [string]::IsNullOrWhiteSpace($env:ATS_MAX_WIDTH) -and
+        [int]::TryParse($env:ATS_MAX_WIDTH, [ref]$parsed)) {
+        $configuredCap = $parsed
+    }
+    $terminalWidth = [Math]::Max(12, [Math]::Min($terminalWidth, 512))
+    $configuredCap = [Math]::Max(12, [Math]::Min($configuredCap, 512))
+    return [Math]::Min($terminalWidth, $configuredCap)
 }
 
 function Get-AtsCodePointWidth {

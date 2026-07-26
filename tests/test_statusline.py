@@ -54,6 +54,11 @@ class StatusLineTests(unittest.TestCase):
         _, cwd = statusline.parse_payload("{not-json", "/safe/fallback")
         self.assertEqual(cwd, "/safe/fallback")
 
+    def test_utf8_bom_payload_is_accepted(self) -> None:
+        payload = '\ufeff{"workspace":{"current_dir":"/work/bom"}}'
+        _, cwd = statusline.parse_payload(payload, "/fallback")
+        self.assertEqual(cwd, "/work/bom")
+
     def test_context_path_preserves_repo_and_nested_directory(self) -> None:
         git = statusline.GitIdentity(r"C:\Users\alex\work\sample repo", "main")
         value = statusline.display_path(
@@ -139,6 +144,18 @@ class StatusLineTests(unittest.TestCase):
         )
         self.assertEqual(rendered, "repo | build-box")
 
+    def test_configured_width_caps_a_wider_terminal(self) -> None:
+        identity = statusline.StatusIdentity(
+            "/work/project/packages/service",
+            "project/packages/service",
+            "main",
+            "build-box",
+        )
+        environment = self.base_env(COLUMNS="160", ATS_MAX_WIDTH="20")
+        rendered = statusline.render(identity, environment)
+        self.assertLessEqual(statusline.display_width(rendered), 20)
+        self.assertNotIn("build-box", rendered)
+
     def test_missing_git_is_a_clean_fallback(self) -> None:
         environment = self.base_env(PATH="")
         self.assertIsNone(statusline.collect_git("/work/repo", environment))
@@ -209,6 +226,18 @@ class StatusLineTests(unittest.TestCase):
         )
         self.assertEqual(invalid.returncode, 0)
         self.assertTrue(invalid.stdout.strip())
+
+    def test_demo_cli_emits_utf8(self) -> None:
+        result = subprocess.run(
+            [sys.executable, str(ROOT / "scripts" / "demo.py")],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=False,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr.decode("utf-8", errors="replace"))
+        output = result.stdout.decode("utf-8")
+        self.assertIn("agent-terminal-status · main · snowy-atlas", output)
+        self.assertIn("agent-term…cs/research", output)
 
     @staticmethod
     def git(cwd: Path, *arguments: str) -> None:

@@ -25,6 +25,8 @@ def show(label: str, identity, **environment: str) -> None:
 
 
 def main() -> int:
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     repo = statusline.StatusIdentity(
         cwd="/home/demo/projects/agent-terminal-status",
         path="agent-terminal-status",

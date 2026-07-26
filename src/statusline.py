@@ -46,7 +46,7 @@ def parse_payload(payload: str, fallback_cwd: Optional[str] = None) -> tuple[dic
     data: dict = {}
     if payload.strip():
         try:
-            candidate = json.loads(payload)
+            candidate = json.loads(payload.lstrip("\ufeff"))
             if isinstance(candidate, dict):
                 data = candidate
         except (json.JSONDecodeError, TypeError, ValueError):
@@ -222,18 +222,18 @@ def _truthy(value: Optional[str]) -> bool:
 
 
 def _max_width(env: Mapping[str, str]) -> int:
-    values = (env.get("ATS_MAX_WIDTH"), env.get("COLUMNS"))
-    width = DEFAULT_MAX_WIDTH
-    for candidate in values:
-        if not candidate:
-            continue
+    def parsed(value: Optional[str], fallback: int) -> int:
         try:
-            width = int(candidate)
-            break
-        except ValueError:
-            continue
-    width = max(12, min(width, 512))
-    return min(width, DEFAULT_MAX_WIDTH)
+            return int(value) if value else fallback
+        except (TypeError, ValueError):
+            return fallback
+
+    terminal_width = max(12, min(parsed(env.get("COLUMNS"), 512), 512))
+    configured_cap = max(
+        12,
+        min(parsed(env.get("ATS_MAX_WIDTH"), DEFAULT_MAX_WIDTH), 512),
+    )
+    return min(terminal_width, configured_cap)
 
 
 def display_width(value: str) -> int:
