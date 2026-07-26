@@ -19,16 +19,23 @@ npm run lint
 ```
 
 `npm test` builds the production output and verifies rendered HTML, core copy,
-accessibility markers, canonical repository links, and the absence of starter
-or persistence scaffolding.
+accessibility markers, fixed-origin metadata, portable asset paths, self-hosted
+fonts, canonical repository links, and the absence of starter or persistence
+scaffolding.
 
 ## Structure
 
 - `app/page.tsx` — product content and semantic layout
 - `app/globals.css` — responsive visual system
 - `app/CopyCommand.tsx` — small clipboard enhancement
-- `public/` — favicon and social preview
+- `public/` — favicon, crawler files, compact social preview, and self-hosted
+  Geist variable fonts
 - `tests/rendered-html.test.mjs` — production-render checks
+
+The two Geist font files come from the official `geist` 1.7.2 package and are
+distributed under the SIL Open Font License included beside them. Keeping them
+local removes a build-time network dependency and prevents build-machine paths
+from entering the deployed CSS.
 
 The repository's root [README](../README.md) remains the canonical installation
 and technical reference.

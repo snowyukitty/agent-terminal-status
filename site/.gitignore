@@ -14,6 +14,7 @@
 /coverage
 /review.png
 /brand/review.html
+/public/favicon-head.html
 
 # next.js
 /.next/

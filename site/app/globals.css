@@ -1,4 +1,22 @@
+@font-face {
+  font-family: "ATS Geist";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("/fonts/Geist-Variable.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "ATS Geist Mono";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("/fonts/GeistMono-Variable.woff2") format("woff2");
+}
+
 :root {
+  --font-geist-sans: "ATS Geist";
+  --font-geist-mono: "ATS Geist Mono";
   --paper: #f2f0e8;
   --paper-deep: #e8e5da;
   --ink: #151b17;
@@ -28,7 +46,9 @@ body {
   margin: 0;
   background: var(--paper);
   color: var(--ink);
-  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  font-family:
+    var(--font-geist-sans), Inter, ui-sans-serif, system-ui, -apple-system,
+    BlinkMacSystemFont, "Segoe UI", sans-serif;
   text-rendering: optimizeLegibility;
 }
 
@@ -281,7 +301,7 @@ a:focus-visible {
 
 .hero-footnote {
   margin: 20px 0 0;
-  color: #747d76;
+  color: var(--muted);
   font-family: var(--font-geist-mono), monospace;
   font-size: 11px;
   line-height: 1.6;
@@ -369,7 +389,7 @@ a:focus-visible {
   display: flex;
   justify-content: space-between;
   margin-bottom: 18px;
-  color: #718077;
+  color: #93a197;
   font-size: 10px;
   letter-spacing: 0.075em;
   text-transform: uppercase;
@@ -398,7 +418,7 @@ a:focus-visible {
   align-items: center;
   gap: 10px;
   padding: 17px 24px;
-  color: #718077;
+  color: #93a197;
   font-size: 9px;
   letter-spacing: 0.07em;
   text-transform: uppercase;
@@ -1024,7 +1044,7 @@ footer p {
   }
 
   .hero-grid {
-    right: -20px;
+    right: 0;
     width: 90%;
   }
 
@@ -1073,16 +1093,17 @@ footer p {
     padding-inline: 15px;
   }
 
-  .site-header nav {
-    gap: 9px;
-  }
-
-  .site-header nav > a:not(.nav-github) {
+  .brand-label {
     display: none;
   }
 
+  .site-header nav {
+    gap: clamp(8px, 3vw, 14px);
+    font-size: 11px;
+  }
+
   .site-header .nav-github {
-    padding: 8px 12px;
+    padding: 7px 9px;
   }
 
   .hero {

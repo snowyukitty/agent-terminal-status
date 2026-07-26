@@ -58,5 +58,6 @@ jobs:
           cache: npm
           cache-dependency-path: site/package-lock.json
       - run: npm ci --ignore-scripts
+      - run: npm audit --audit-level=high
       - run: npm test
       - run: npm run lint

@@ -64,7 +64,7 @@ export default function Home() {
           <span className="brand-mark" aria-hidden="true">
             <span />
           </span>
-          <span>agent-terminal-status</span>
+          <span className="brand-label">agent-terminal-status</span>
         </a>
         <nav aria-label="Primary navigation">
           <a href="#install">Install</a>
@@ -166,16 +166,16 @@ export default function Home() {
 
         <section className="proof-strip" aria-label="Verification summary">
           <div>
-            <strong>49</strong>
-            <span>cross-runtime checks</span>
+            <strong>3 OSes</strong>
+            <span>cross-platform CI</span>
           </div>
           <div>
-            <strong>65.5 ms</strong>
-            <span>Python Git p95</span>
+            <strong>150 ms</strong>
+            <span>per Git probe deadline</span>
           </div>
           <div>
-            <strong>283.2 ms</strong>
-            <span>Windows PS Git p95</span>
+            <strong>1 line</strong>
+            <span>width invariant</span>
           </div>
           <div>
             <strong>0</strong>
