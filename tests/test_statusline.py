@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import importlib.util
+import io
 import json
 import os
 import subprocess
 import sys
 import tempfile
 import unittest
+from contextlib import redirect_stderr
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -58,6 +60,19 @@ class StatusLineTests(unittest.TestCase):
         payload = '\ufeff{"workspace":{"current_dir":"/work/bom"}}'
         _, cwd = statusline.parse_payload(payload, "/fallback")
         self.assertEqual(cwd, "/work/bom")
+
+    def test_payload_paths_must_be_nonblank_strings(self) -> None:
+        payload = json.dumps(
+            {
+                "cwd": "   ",
+                "workspace": {
+                    "current_dir": ["not", "a", "path"],
+                    "project_dir": "/safe/project",
+                },
+            }
+        )
+        _, cwd = statusline.parse_payload(payload, "/fallback")
+        self.assertEqual(cwd, "/safe/project")
 
     def test_context_path_preserves_repo_and_nested_directory(self) -> None:
         git = statusline.GitIdentity(r"C:\Users\alex\work\sample repo", "main")
@@ -155,6 +170,52 @@ class StatusLineTests(unittest.TestCase):
         rendered = statusline.render(identity, environment)
         self.assertLessEqual(statusline.display_width(rendered), 20)
         self.assertNotIn("build-box", rendered)
+
+    def test_render_width_is_invariant_across_visibility_modes(self) -> None:
+        identities = (
+            statusline.StatusIdentity(
+                "/work/payments-api/services/billing/handlers",
+                "payments-api/services/billing/handlers",
+                "feature/very-long-branch-name-here",
+                "build-eu",
+            ),
+            statusline.StatusIdentity(
+                "/work/專案/packages/日本語-service",
+                "專案/packages/日本語-service",
+                "功能/很長的分支名稱",
+                "東京-build",
+            ),
+            statusline.StatusIdentity("/tmp/x", "x", None, ""),
+        )
+        for width in range(12, 97):
+            for branch_mode in ("auto", "always", "never"):
+                for host_mode in ("auto", "always", "never"):
+                    environment = self.base_env(
+                        COLUMNS="512",
+                        ATS_MAX_WIDTH=str(width),
+                        ATS_SHOW_BRANCH=branch_mode,
+                        ATS_SHOW_HOST=host_mode,
+                    )
+                    for identity in identities:
+                        with self.subTest(
+                            width=width,
+                            branch_mode=branch_mode,
+                            host_mode=host_mode,
+                            path=identity.path,
+                        ):
+                            rendered = statusline.render(identity, environment)
+                            self.assertLessEqual(statusline.display_width(rendered), width)
+
+    def test_render_replaces_line_breaking_control_characters(self) -> None:
+        identity = statusline.StatusIdentity(
+            "/work/repo\nsecret",
+            "repo\npackages\tapi",
+            "feature\ridentity",
+            "build\x7fbox",
+        )
+        rendered = statusline.render(identity, self.base_env())
+        self.assertNotRegex(rendered, r"[\x00-\x1f\x7f-\x9f]")
+        self.assertEqual(len(rendered.splitlines()), 1)
 
     def test_missing_git_is_a_clean_fallback(self) -> None:
         environment = self.base_env(PATH="")
@@ -310,6 +371,37 @@ class InstallerTests(unittest.TestCase):
         settings_path.write_text("{ invalid", encoding="utf-8")
         with self.assertRaisesRegex(RuntimeError, "invalid JSON"):
             manager.install(self.config)
+        self.assertEqual(settings_path.read_text(encoding="utf-8"), "{ invalid")
+        self.assertFalse((self.config / "agent-terminal-status").exists())
+
+    def test_non_object_settings_are_not_touched(self) -> None:
+        settings_path = self.config / "settings.json"
+        settings_path.write_text('["keep", {"nested": true}]', encoding="utf-8")
+        original = settings_path.read_bytes()
+        with self.assertRaisesRegex(RuntimeError, "root value must be a JSON object"):
+            manager.install(self.config)
+        self.assertEqual(settings_path.read_bytes(), original)
+        self.assertFalse((self.config / "agent-terminal-status").exists())
+
+    def test_utf8_bom_settings_are_supported(self) -> None:
+        settings_path = self.config / "settings.json"
+        settings_path.write_bytes(b'\xef\xbb\xbf{"theme":"dark"}')
+        manager.install(self.config)
+        self.assertEqual(self.read_settings()["theme"], "dark")
+        manager.uninstall(self.config)
+        self.assertEqual(self.read_settings(), {"theme": "dark"})
+
+    def test_uninstall_removes_own_files_when_settings_are_corrupt(self) -> None:
+        self.write_settings({"theme": "dark"})
+        manager.install(self.config)
+        settings_path = self.config / "settings.json"
+        settings_path.write_text("{ invalid", encoding="utf-8")
+        errors = io.StringIO()
+
+        with redirect_stderr(errors):
+            manager.uninstall(self.config)
+
+        self.assertIn("settings are unreadable", errors.getvalue())
         self.assertEqual(settings_path.read_text(encoding="utf-8"), "{ invalid")
         self.assertFalse((self.config / "agent-terminal-status").exists())
 

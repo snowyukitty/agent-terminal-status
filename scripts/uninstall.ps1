@@ -48,7 +48,17 @@ function Read-Json {
     if (-not (Test-Path -LiteralPath $Path)) { return $null }
     $raw = [IO.File]::ReadAllText($Path)
     if ([string]::IsNullOrWhiteSpace($raw)) { return [pscustomobject]@{} }
-    return $raw | ConvertFrom-Json -ErrorAction Stop
+    try {
+        $value = $raw | ConvertFrom-Json -ErrorAction Stop
+    }
+    catch {
+        throw "Cannot parse '$Path' as JSON."
+    }
+    if ($null -eq $value -or
+        $value.GetType().FullName -ne 'System.Management.Automation.PSCustomObject') {
+        throw "Cannot parse '$Path': the root value must be a JSON object."
+    }
+    return $value
 }
 
 if ([string]::IsNullOrWhiteSpace($ConfigDir)) {
@@ -64,8 +74,20 @@ $ConfigDir = [IO.Path]::GetFullPath($ConfigDir)
 $installDir = Join-Path $ConfigDir 'agent-terminal-status'
 $statePath = Join-Path $installDir 'install-state.json'
 $settingsPath = Join-Path $ConfigDir 'settings.json'
-$state = Read-Json $statePath
-$settings = Read-Json $settingsPath
+$state = $null
+$settings = $null
+try {
+    $state = Read-Json $statePath
+}
+catch {
+    Write-Warning "The install state is unreadable; rollback metadata is unavailable. Project files will still be removed."
+}
+try {
+    $settings = Read-Json $settingsPath
+}
+catch {
+    Write-Warning "Claude settings are unreadable and were left untouched. Project files will still be removed; repair '$settingsPath' and remove its statusLine entry if needed."
+}
 $settingsChanged = $false
 
 if ($null -ne $settings) {

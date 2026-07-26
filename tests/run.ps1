@@ -70,10 +70,32 @@ try {
         Assert-Equal 'C:\safe' (Get-AtsPayloadCwd '{broken' 'C:\safe') 'Malformed JSON did not fall back.'
     }
 
+    Test-Case 'payload paths must be nonblank strings' {
+        $json = '{"cwd":"   ","workspace":{"current_dir":[1,2],"project_dir":"C:\\safe\\project"}}'
+        Assert-Equal 'C:\safe\project' (Get-AtsPayloadCwd $json 'C:\fallback') 'Invalid payload path was coerced.'
+    }
+
     Test-Case 'repo-relative path preserves spaces and Unicode' {
         $git = [pscustomobject]@{ Root = 'C:\Users\alex\work\sample repo'; Branch = 'main' }
         $value = Get-AtsDisplayPath "C:\Users\alex\work\sample repo\packages\$unicodeName" $git
         Assert-Equal "sample repo/packages/$unicodeName" $value 'Context path was not preserved.'
+    }
+
+    Test-Case 'home path follows the displayed path style' {
+        $savedHome = $env:HOME
+        $savedProfile = $env:USERPROFILE
+        try {
+            $env:HOME = '/c/Users/alex'
+            $env:USERPROFILE = 'C:\Users\alex'
+            Assert-Equal '~/scratch/notes' (Get-AtsDisplayPath 'C:\Users\alex\scratch\notes' $null 'full') 'Windows path did not prefer USERPROFILE.'
+
+            $env:HOME = '/home/alex'
+            Assert-Equal '~/scratch/notes' (Get-AtsDisplayPath '/home/alex/scratch/notes' $null 'full') 'POSIX path did not prefer HOME.'
+        }
+        finally {
+            if ($null -eq $savedHome) { Remove-Item Env:HOME -ErrorAction SilentlyContinue } else { $env:HOME = $savedHome }
+            if ($null -eq $savedProfile) { Remove-Item Env:USERPROFILE -ErrorAction SilentlyContinue } else { $env:USERPROFILE = $savedProfile }
+        }
     }
 
     Test-Case 'wide render includes path branch and machine' {
@@ -144,6 +166,53 @@ try {
         Assert-True ((Get-AtsTextWidth $value) -le 20) 'ATS_MAX_WIDTH was not applied.'
         Assert-True (-not $value.Contains('build-box')) 'Optional host should be dropped under the configured cap.'
         Remove-Item Env:ATS_MAX_WIDTH -ErrorAction SilentlyContinue
+    }
+
+    Test-Case 'render width is invariant across visibility modes' {
+        $env:COLUMNS = '512'
+        $identities = @(
+            [pscustomobject]@{
+                Cwd = 'C:\work\payments-api\services\billing\handlers'
+                Path = 'payments-api/services/billing/handlers'
+                Branch = 'feature/very-long-branch-name-here'
+                Machine = 'build-eu'
+            },
+            [pscustomobject]@{
+                Cwd = "C:\work\$unicodeName\packages\$unicodeName-service"
+                Path = "$unicodeName/packages/$unicodeName-service"
+                Branch = "$unicodeName/very-long-branch"
+                Machine = "$unicodeName-build"
+            },
+            [pscustomobject]@{ Cwd = 'C:\tmp\x'; Path = 'x'; Branch = $null; Machine = '' }
+        )
+        foreach ($width in 12..96) {
+            $env:ATS_MAX_WIDTH = [string]$width
+            foreach ($branchMode in @('auto', 'always', 'never')) {
+                $env:ATS_SHOW_BRANCH = $branchMode
+                foreach ($hostMode in @('auto', 'always', 'never')) {
+                    $env:ATS_SHOW_HOST = $hostMode
+                    foreach ($identity in $identities) {
+                        $value = Format-AtsStatus $identity
+                        Assert-True ((Get-AtsTextWidth $value) -le $width) "Output exceeded width $width for branch=$branchMode host=$hostMode`: $value"
+                    }
+                }
+            }
+        }
+        Remove-Item Env:ATS_MAX_WIDTH -ErrorAction SilentlyContinue
+        $env:ATS_SHOW_BRANCH = 'auto'
+        $env:ATS_SHOW_HOST = 'auto'
+    }
+
+    Test-Case 'render replaces line-breaking control characters' {
+        $env:COLUMNS = '96'
+        $identity = [pscustomobject]@{
+            Cwd = "C:\work\repo`nsecret"
+            Path = "repo`npackages`tapi"
+            Branch = "feature`ridentity"
+            Machine = "build$([char]0x7F)box"
+        }
+        $value = Format-AtsStatus $identity
+        Assert-True ($value -notmatch '[\x00-\x1F\x7F-\x9F]') 'Output retained a control character.'
     }
 
     Test-Case 'PowerShell command emits UTF-8 identity' {
@@ -338,6 +407,67 @@ try {
             Assert-True $blocked 'Invalid JSON should block installation.'
             Assert-Equal '{ invalid' ([IO.File]::ReadAllText($settingsPath)) 'Invalid settings were modified.'
             Assert-True (-not (Test-Path -LiteralPath (Join-Path $config 'agent-terminal-status'))) 'Install files were created after invalid settings.'
+        }
+        finally {
+            if (Test-Path -LiteralPath $temporaryRoot) {
+                $resolvedTemporary = [IO.Path]::GetFullPath($temporaryRoot)
+                $tempBase = [IO.Path]::GetFullPath([IO.Path]::GetTempPath())
+                if (-not $resolvedTemporary.StartsWith($tempBase, [StringComparison]::OrdinalIgnoreCase)) {
+                    throw "Refusing to clean unexpected test path: $resolvedTemporary"
+                }
+                Remove-Item -LiteralPath $resolvedTemporary -Recurse -Force
+            }
+        }
+    }
+
+    Test-Case 'installer refuses array-root settings without changes' {
+        $temporaryRoot = Join-Path ([IO.Path]::GetTempPath()) ('ats-array-root-' + [Guid]::NewGuid().ToString('N'))
+        $config = Join-Path $temporaryRoot 'claude config'
+        try {
+            New-Item -ItemType Directory -Path $config -Force | Out-Null
+            $settingsPath = Join-Path $config 'settings.json'
+            $original = '["my","important",{"deeply":"nested"}]'
+            $encoding = New-Object System.Text.UTF8Encoding($false)
+            [IO.File]::WriteAllText($settingsPath, $original, $encoding)
+
+            $blocked = $false
+            try {
+                & (Join-Path $root 'scripts\install.ps1') -ConfigDir $config 2>&1 | Out-Null
+            }
+            catch {
+                $blocked = $true
+            }
+            Assert-True $blocked 'Array-root settings should block installation.'
+            Assert-Equal $original ([IO.File]::ReadAllText($settingsPath)) 'Array-root settings were modified.'
+            Assert-True (-not (Test-Path -LiteralPath (Join-Path $config 'agent-terminal-status'))) 'Install files were created for array-root settings.'
+        }
+        finally {
+            if (Test-Path -LiteralPath $temporaryRoot) {
+                $resolvedTemporary = [IO.Path]::GetFullPath($temporaryRoot)
+                $tempBase = [IO.Path]::GetFullPath([IO.Path]::GetTempPath())
+                if (-not $resolvedTemporary.StartsWith($tempBase, [StringComparison]::OrdinalIgnoreCase)) {
+                    throw "Refusing to clean unexpected test path: $resolvedTemporary"
+                }
+                Remove-Item -LiteralPath $resolvedTemporary -Recurse -Force
+            }
+        }
+    }
+
+    Test-Case 'uninstall removes own files when settings are corrupt' {
+        $temporaryRoot = Join-Path ([IO.Path]::GetTempPath()) ('ats-corrupt-uninstall-' + [Guid]::NewGuid().ToString('N'))
+        $config = Join-Path $temporaryRoot 'claude config'
+        try {
+            New-Item -ItemType Directory -Path $config -Force | Out-Null
+            $settingsPath = Join-Path $config 'settings.json'
+            $encoding = New-Object System.Text.UTF8Encoding($false)
+            [IO.File]::WriteAllText($settingsPath, '{"theme":"dark"}', $encoding)
+            & (Join-Path $root 'scripts\install.ps1') -ConfigDir $config | Out-Null
+            [IO.File]::WriteAllText($settingsPath, '{ invalid', $encoding)
+
+            $warnings = & (Join-Path $config 'agent-terminal-status\uninstall.ps1') 3>&1
+            Assert-True (($warnings -join "`n") -match 'settings are unreadable') 'Uninstall did not explain the partial cleanup.'
+            Assert-Equal '{ invalid' ([IO.File]::ReadAllText($settingsPath)) 'Corrupt settings were modified.'
+            Assert-True (-not (Test-Path -LiteralPath (Join-Path $config 'agent-terminal-status'))) 'Own install files were not removed.'
         }
         finally {
             if (Test-Path -LiteralPath $temporaryRoot) {

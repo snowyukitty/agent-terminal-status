@@ -85,15 +85,34 @@ function Get-AtsPayloadCwd {
     }
 
     $candidates = New-Object System.Collections.Generic.List[string]
-    if ($null -ne $data) {
-        if ($null -ne $data.workspace -and -not [string]::IsNullOrWhiteSpace([string]$data.workspace.current_dir)) {
-            $candidates.Add([string]$data.workspace.current_dir)
+    if ($null -ne $data -and $data.GetType().FullName -eq 'System.Management.Automation.PSCustomObject') {
+        $workspace = $null
+        $workspaceProperty = $data.PSObject.Properties['workspace']
+        if ($null -ne $workspaceProperty -and $null -ne $workspaceProperty.Value -and
+            $workspaceProperty.Value.GetType().FullName -eq 'System.Management.Automation.PSCustomObject') {
+            $workspace = $workspaceProperty.Value
         }
-        if (-not [string]::IsNullOrWhiteSpace([string]$data.cwd)) {
-            $candidates.Add([string]$data.cwd)
+
+        if ($null -ne $workspace) {
+            $currentProperty = $workspace.PSObject.Properties['current_dir']
+            if ($null -ne $currentProperty -and $currentProperty.Value -is [string] -and
+                -not [string]::IsNullOrWhiteSpace($currentProperty.Value)) {
+                $candidates.Add($currentProperty.Value)
+            }
         }
-        if ($null -ne $data.workspace -and -not [string]::IsNullOrWhiteSpace([string]$data.workspace.project_dir)) {
-            $candidates.Add([string]$data.workspace.project_dir)
+
+        $cwdProperty = $data.PSObject.Properties['cwd']
+        if ($null -ne $cwdProperty -and $cwdProperty.Value -is [string] -and
+            -not [string]::IsNullOrWhiteSpace($cwdProperty.Value)) {
+            $candidates.Add($cwdProperty.Value)
+        }
+
+        if ($null -ne $workspace) {
+            $projectProperty = $workspace.PSObject.Properties['project_dir']
+            if ($null -ne $projectProperty -and $projectProperty.Value -is [string] -and
+                -not [string]::IsNullOrWhiteSpace($projectProperty.Value)) {
+                $candidates.Add($projectProperty.Value)
+            }
         }
     }
     if (-not [string]::IsNullOrWhiteSpace($FallbackCwd)) { $candidates.Add($FallbackCwd) }
@@ -202,8 +221,14 @@ function Get-AtsGitIdentity {
 }
 
 function Get-AtsHomePath {
-    if (-not [string]::IsNullOrWhiteSpace($env:HOME)) { return $env:HOME }
+    param([string] $Path = '')
+
+    $normalized = ConvertTo-AtsSlashPath $Path
+    $windowsStyle = $normalized -match '^[A-Za-z]:/' -or $normalized.StartsWith('//')
+    if ($windowsStyle -and -not [string]::IsNullOrWhiteSpace($env:USERPROFILE)) { return $env:USERPROFILE }
+    if (-not $windowsStyle -and -not [string]::IsNullOrWhiteSpace($env:HOME)) { return $env:HOME }
     if (-not [string]::IsNullOrWhiteSpace($env:USERPROFILE)) { return $env:USERPROFILE }
+    if (-not [string]::IsNullOrWhiteSpace($env:HOME)) { return $env:HOME }
     return [Environment]::GetFolderPath([Environment+SpecialFolder]::UserProfile)
 }
 
@@ -232,7 +257,7 @@ function Get-AtsDisplayPath {
         }
     }
 
-    $homeRelative = Get-AtsRelativeChild $normalizedCwd (Get-AtsHomePath)
+    $homeRelative = Get-AtsRelativeChild $normalizedCwd (Get-AtsHomePath $normalizedCwd)
     if ($null -ne $homeRelative) {
         if ([string]::IsNullOrEmpty($homeRelative)) { return '~' }
         return '~/' + $homeRelative
@@ -379,6 +404,12 @@ function Compress-AtsMiddle {
     return (Get-AtsPrefixByWidth $Value $left) + $marker + (Get-AtsSuffixByWidth $Value $right)
 }
 
+function ConvertTo-AtsDisplayText {
+    param([AllowNull()] $Value)
+    if ($null -eq $Value) { return '' }
+    return ([string]$Value) -replace '[\x00-\x1F\x7F-\x9F]', ' '
+}
+
 function Format-AtsStatus {
     param([Parameter(Mandatory = $true)] $Identity)
 
@@ -387,26 +418,38 @@ function Format-AtsStatus {
     $branchMode = Get-AtsMode $env:ATS_SHOW_BRANCH
     $hostMode = Get-AtsMode $env:ATS_SHOW_HOST
     $width = Get-AtsMaxWidth
-    $path = if ([string]::IsNullOrEmpty([string]$Identity.Path)) { [string]$Identity.Cwd } else { [string]$Identity.Path }
+    $path = if ([string]::IsNullOrEmpty([string]$Identity.Path)) {
+        ConvertTo-AtsDisplayText $Identity.Cwd
+    }
+    else {
+        ConvertTo-AtsDisplayText $Identity.Path
+    }
     if ([string]::IsNullOrEmpty($path)) { $path = '?' }
-    $includeBranch = -not [string]::IsNullOrEmpty([string]$Identity.Branch) -and $branchMode -ne 'never'
-    $includeHost = -not [string]::IsNullOrEmpty([string]$Identity.Machine) -and $hostMode -ne 'never'
+    $branch = ConvertTo-AtsDisplayText $Identity.Branch
+    $machine = ConvertTo-AtsDisplayText $Identity.Machine
+    $includeBranch = -not [string]::IsNullOrEmpty($branch) -and $branchMode -ne 'never'
+    $includeHost = -not [string]::IsNullOrEmpty($machine) -and $hostMode -ne 'never'
 
     $compose = {
         param([string] $CurrentPath)
         $parts = New-Object System.Collections.Generic.List[string]
         $parts.Add($CurrentPath)
-        if ($includeBranch) { $parts.Add([string]$Identity.Branch) }
-        if ($includeHost) { $parts.Add([string]$Identity.Machine) }
+        if ($includeBranch) { $parts.Add($branch) }
+        if ($includeHost) { $parts.Add($machine) }
         return $parts -join $separator
+    }
+
+    $getSuffixParts = {
+        $parts = New-Object System.Collections.Generic.List[string]
+        if ($includeBranch) { $parts.Add($branch) }
+        if ($includeHost) { $parts.Add($machine) }
+        return ,$parts
     }
 
     $line = & $compose $path
     if ((Get-AtsTextWidth $line) -le $width) { return $line }
 
-    $suffixParts = New-Object System.Collections.Generic.List[string]
-    if ($includeBranch) { $suffixParts.Add([string]$Identity.Branch) }
-    if ($includeHost) { $suffixParts.Add([string]$Identity.Machine) }
+    $suffixParts = & $getSuffixParts
     $suffixLength = if ($suffixParts.Count -gt 0) { Get-AtsTextWidth ($separator + ($suffixParts -join $separator)) } else { 0 }
     $minimumPath = [Math]::Min(18, [Math]::Max(8, [Math]::Floor($width / 2)))
     if ($suffixLength + $minimumPath -le $width) {
@@ -419,7 +462,8 @@ function Format-AtsStatus {
         if ((Get-AtsTextWidth $line) -le $width) { return $line }
     }
 
-    $suffixLength = if ($includeHost) { Get-AtsTextWidth ($separator + [string]$Identity.Machine) } else { 0 }
+    $suffixParts = & $getSuffixParts
+    $suffixLength = if ($suffixParts.Count -gt 0) { Get-AtsTextWidth ($separator + ($suffixParts -join $separator)) } else { 0 }
     if ($suffixLength + $minimumPath -le $width) {
         return & $compose (Compress-AtsMiddle $path ($width - $suffixLength) $asciiOnly)
     }
@@ -430,9 +474,7 @@ function Format-AtsStatus {
         if ((Get-AtsTextWidth $line) -le $width) { return $line }
     }
 
-    $suffixParts = New-Object System.Collections.Generic.List[string]
-    if ($includeBranch) { $suffixParts.Add([string]$Identity.Branch) }
-    if ($includeHost) { $suffixParts.Add([string]$Identity.Machine) }
+    $suffixParts = & $getSuffixParts
     $suffix = if ($suffixParts.Count -gt 0) { $separator + ($suffixParts -join $separator) } else { '' }
     $pathBudget = [Math]::Max(1, $width - (Get-AtsTextWidth $suffix))
     $final = (Compress-AtsMiddle $path $pathBudget $asciiOnly) + $suffix

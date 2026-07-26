@@ -78,7 +78,8 @@ function Get-JsonObject {
     catch {
         throw "Cannot install: '$Path' is not valid JSON. No settings were changed."
     }
-    if ($null -eq $value -or $value -isnot [psobject]) {
+    if ($null -eq $value -or
+        $value.GetType().FullName -ne 'System.Management.Automation.PSCustomObject') {
         throw "Cannot install: '$Path' must contain a JSON object. No settings were changed."
     }
     return $value

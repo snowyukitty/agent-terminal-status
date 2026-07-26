@@ -28,7 +28,7 @@ def default_config_dir() -> Path:
 def read_json(path: Path) -> dict[str, Any]:
     if not path.exists():
         return {}
-    raw = path.read_text(encoding="utf-8")
+    raw = path.read_text(encoding="utf-8-sig")
     if not raw.strip():
         return {}
     try:
@@ -141,8 +141,27 @@ def install(config_dir: Path, force: bool = False) -> None:
 def uninstall(config_dir: Path) -> None:
     config_dir = config_dir.expanduser().resolve()
     paths = _installed_paths(config_dir)
-    state = read_json(paths["state"]) if paths["state"].exists() else None
-    settings = read_json(paths["settings"]) if paths["settings"].exists() else None
+    state = None
+    settings = None
+    if paths["state"].exists():
+        try:
+            state = read_json(paths["state"])
+        except RuntimeError:
+            print(
+                "Warning: the install state is unreadable; rollback metadata is "
+                "unavailable. Project files will still be removed.",
+                file=sys.stderr,
+            )
+    if paths["settings"].exists():
+        try:
+            settings = read_json(paths["settings"])
+        except RuntimeError:
+            print(
+                "Warning: Claude settings are unreadable and were left untouched. "
+                f"Project files will still be removed; repair {paths['settings']} "
+                "and remove its statusLine entry if needed.",
+                file=sys.stderr,
+            )
     settings_changed = False
 
     if settings is not None:

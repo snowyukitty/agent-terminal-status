@@ -63,10 +63,13 @@ def parse_payload(payload: str, fallback_cwd: Optional[str] = None) -> tuple[dic
         fallback_cwd,
         _safe_cwd(),
     )
-    cwd = next(
-        (str(value) for value in candidates if isinstance(value, (str, os.PathLike)) and str(value)),
-        ".",
-    )
+    cwd = "."
+    for value in candidates:
+        if isinstance(value, (str, os.PathLike)):
+            candidate_path = str(value)
+            if candidate_path.strip():
+                cwd = candidate_path
+                break
     return data, cwd
 
 
@@ -253,6 +256,11 @@ def display_width(value: str) -> int:
     return width
 
 
+def _safe_display_text(value: object) -> str:
+    """Replace control characters that could break the one-line contract."""
+    return re.sub(r"[\x00-\x1f\x7f-\x9f]", " ", str(value))
+
+
 def _take_prefix_cells(value: str, budget: int) -> str:
     used = 0
     end = 0
@@ -303,31 +311,40 @@ def render(identity: StatusIdentity, env: Optional[Mapping[str, str]] = None) ->
     host_mode = _mode(environment.get("ATS_SHOW_HOST"))
     width = _max_width(environment)
 
-    path = identity.path or identity.cwd or "?"
-    include_branch = bool(identity.branch) and branch_mode != "never"
-    include_host = bool(identity.machine) and host_mode != "never"
+    path = _safe_display_text(identity.path or identity.cwd or "?") or "?"
+    branch = _safe_display_text(identity.branch) if identity.branch else None
+    machine = _safe_display_text(identity.machine) if identity.machine else ""
+    include_branch = bool(branch) and branch_mode != "never"
+    include_host = bool(machine) and host_mode != "never"
 
     def compose(current_path: str) -> str:
         parts = [current_path]
-        if include_branch and identity.branch:
-            parts.append(identity.branch)
-        if include_host and identity.machine:
-            parts.append(identity.machine)
+        if include_branch and branch:
+            parts.append(branch)
+        if include_host and machine:
+            parts.append(machine)
         return separator.join(parts)
+
+    def suffix_parts() -> list[str]:
+        parts: list[str] = []
+        if include_branch and branch:
+            parts.append(branch)
+        if include_host and machine:
+            parts.append(machine)
+        return parts
+
+    def suffix_length() -> int:
+        parts = suffix_parts()
+        return display_width(separator.join(["", *parts])) if parts else 0
 
     line = compose(path)
     if display_width(line) <= width:
         return line
 
-    suffix_parts: list[str] = []
-    if include_branch and identity.branch:
-        suffix_parts.append(identity.branch)
-    if include_host and identity.machine:
-        suffix_parts.append(identity.machine)
-    suffix_length = display_width(separator.join(["", *suffix_parts])) if suffix_parts else 0
     minimum_path = min(18, max(8, width // 2))
-    if suffix_length + minimum_path <= width:
-        return compose(shorten_middle(path, width - suffix_length, ascii_only))
+    current_suffix_length = suffix_length()
+    if current_suffix_length + minimum_path <= width:
+        return compose(shorten_middle(path, width - current_suffix_length, ascii_only))
 
     if include_branch and branch_mode == "auto":
         include_branch = False
@@ -335,9 +352,9 @@ def render(identity: StatusIdentity, env: Optional[Mapping[str, str]] = None) ->
         if display_width(line) <= width:
             return line
 
-    suffix_length = display_width(separator + identity.machine) if include_host and identity.machine else 0
-    if suffix_length + minimum_path <= width:
-        return compose(shorten_middle(path, width - suffix_length, ascii_only))
+    current_suffix_length = suffix_length()
+    if current_suffix_length + minimum_path <= width:
+        return compose(shorten_middle(path, width - current_suffix_length, ascii_only))
 
     if include_host and host_mode == "auto":
         include_host = False
@@ -345,12 +362,8 @@ def render(identity: StatusIdentity, env: Optional[Mapping[str, str]] = None) ->
         if display_width(line) <= width:
             return line
 
-    suffix_parts = []
-    if include_branch and identity.branch:
-        suffix_parts.append(identity.branch)
-    if include_host and identity.machine:
-        suffix_parts.append(identity.machine)
-    suffix = separator + separator.join(suffix_parts) if suffix_parts else ""
+    current_suffix_parts = suffix_parts()
+    suffix = separator + separator.join(current_suffix_parts) if current_suffix_parts else ""
     path_budget = max(1, width - display_width(suffix))
     final = f"{shorten_middle(path, path_budget, ascii_only)}{suffix}"
     return shorten_middle(final, width, ascii_only)
