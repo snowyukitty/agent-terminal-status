@@ -1,0 +1,23 @@
+# Agent and editor caches
+.claude/
+.codex/
+mcps/
+.idea/
+.vscode/
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+htmlcov/
+.venv/
+
+# Test and benchmark output
+.tmp/
+benchmark-results.json
+
+# OS files
+.DS_Store
+Thumbs.db
+Desktop.ini
