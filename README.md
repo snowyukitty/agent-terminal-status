@@ -2,6 +2,10 @@
 
 One quiet line that tells you where your coding agent is working.
 
+[Website](https://agent-terminal-status.gldtestuser.chatgpt.site) ·
+[Quick start](#quick-start) ·
+[Roadmap](ROADMAP.md)
+
 ![Terminal demo showing repository, nested directory, branch, and machine identity](docs/demo.svg)
 
 ```text
@@ -19,9 +23,8 @@ The repository and actual nested working directory stay visible. Git branch and
 machine identity are secondary: they appear when space allows and disappear
 before the path on narrow terminals.
 
-The project website is built from the frontend-only source in
-[`site/`](site/README.md). Its public production URL is also listed in the
-GitHub repository sidebar.
+Explore the [public project website](https://agent-terminal-status.gldtestuser.chatgpt.site);
+its frontend-only source lives in [`site/`](site/README.md).
 
 ## Quick start
 
