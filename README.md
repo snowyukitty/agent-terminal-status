@@ -168,9 +168,18 @@ Installation is intentionally reversible:
 - reinstall is idempotent and retains the original rollback value;
 - uninstall restores settings only while the active command is still ours.
 
+Both installers preserve settings semantics but may normalize indentation,
+escaping, and line endings when writing `settings.json`; uninstall does not
+promise byte-identical formatting. UTF-8 files with or without a BOM are
+accepted. If settings become unreadable after installation, uninstall leaves
+them untouched, warns with a repair path, and still removes only this project's
+known files.
+
 On Windows, the configured command uses quoted forward-slash paths because
 Claude Code may route commands through Git Bash, which otherwise consumes
-backslashes.
+backslashes. It also uses process-scoped `-ExecutionPolicy Bypass` so the copied
+adapter runs under the common default Windows PowerShell policy without
+changing machine or user policy.
 
 ## Test and inspect
 
@@ -185,9 +194,10 @@ python .\scripts\benchmark.py
 ```
 
 Tests cover Git and non-Git directories, spaces and non-ASCII paths, detached
-HEAD, linked worktrees, narrow widths, missing Git, malformed input, and
-reversible installer behavior. CI runs Python on Windows, macOS, and Linux, plus
-Windows PowerShell 5.1 and PowerShell 7.
+HEAD, linked worktrees, missing Git, malformed input, reversible installer
+behavior, and a table-driven width invariant across every branch/host mode. CI
+runs Python on Windows, macOS, and Linux, plus Windows PowerShell 5.1 and
+PowerShell 7.
 
 Measured latency and methodology are in
 [docs/performance.md](docs/performance.md).
@@ -227,6 +237,9 @@ workspace identity in coding-agent terminals.
 
 - Claude Code controls when the command reruns and temporarily hides its custom
   status line during some UI interactions.
+- Terminal resize is not currently an update trigger. Width refreshes on the
+  next Claude event; `refreshInterval` is available but deliberately not enabled
+  by default because it continuously starts a process in every session.
 - A 150 ms Git timeout favors a present path over a delayed branch on slow
   network filesystems.
 - Windows PowerShell avoids an extra runtime but has higher process startup cost

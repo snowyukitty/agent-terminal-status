@@ -4,26 +4,29 @@ Snapshot: **2026-07-27**. These are local measurements, not universal claims.
 
 ## Result
 
-Complete command latency, including process startup and Git probing:
+Complete-command latency includes process startup, JSON parsing, Git probing,
+rendering, and output. Three 25-sample batches on the same reference machine
+showed the following p95 ranges across Git and non-Git scenarios:
 
-| Adapter | Scenario | p50 | p95 | Max |
-| --- | --- | ---: | ---: | ---: |
-| Python 3.12 | Git repository | 62.3 ms | 65.5 ms | 67.8 ms |
-| Python 3.12 | Non-Git directory | 60.5 ms | 65.6 ms | 66.5 ms |
-| Windows PowerShell 5.1 | Git repository | 279.4 ms | 283.2 ms | 283.4 ms |
-| Windows PowerShell 5.1 | Non-Git directory | 274.8 ms | 278.8 ms | 282.3 ms |
-| PowerShell 7.6 | Git repository | 337.8 ms | 340.6 ms | 343.4 ms |
-| PowerShell 7.6 | Non-Git directory | 335.7 ms | 339.4 ms | 354.4 ms |
+| Adapter | Observed p95 range | Interpretation |
+| --- | ---: | --- |
+| Python 3.12 | 63–66 ms | Stable across the measured batches |
+| Windows PowerShell 5.1 | 279–306 ms | Startup cost is material and varies between runs |
+| PowerShell 7.6 | 332–369 ms | Slower in this packaged environment |
 
-The configured Windows default is Windows PowerShell 5.1 because it is present
-on supported Windows installations and adds no runtime dependency. Its p95 was
-below Claude Code's documented 300 ms update debounce on this machine. Python
-was substantially faster. PowerShell 7 startup was slower in this packaged
-environment, so the installer does not prefer it merely because it is newer.
+These ranges are a reference, not a service-level objective. One independent
+repeat recorded a 4.1 s maximum for PowerShell 7 even though that batch's p95
+was 369 ms. Tail spikes matter because Claude Code cancels an in-flight status
+command when a newer update arrives.
 
-Git and non-Git results were nearly identical. The implementation performs one
-bounded `git rev-parse` in the normal branch case; process startup dominates
-this reference measurement.
+The configured Windows default remains Windows PowerShell 5.1 because it is
+present on supported Windows installations and adds no runtime dependency.
+Python was substantially faster on this host. PowerShell 7 is not preferred
+merely because it is newer.
+
+Git and non-Git measurements were close. The normal branch case performs one
+bounded `git rev-parse`; fresh PowerShell process startup dominates this
+reference measurement.
 
 ## Reference environment
 
@@ -59,21 +62,27 @@ The Git scenario uses this repository at a committed `main` HEAD. The non-Git
 scenario uses a fresh temporary directory. `ATS_GIT_TIMEOUT_MS` is the default
 150 ms and `COLUMNS` is 96.
 
-Claude Code itself debounces rapid status updates by 300 ms and cancels a
-running status command if a newer update arrives, according to its
+Claude Code debounces rapid status updates by 300 ms and cancels a running
+status command if a newer update arrives, according to its
 [status-line documentation](https://code.claude.com/docs/en/statusline#how-status-lines-work).
-That makes tail latency more important than an in-process microbenchmark.
+The debounce interval batches triggers; it is not a script execution budget.
+Cancellation frequency and tail latency are therefore more meaningful than
+whether a single p95 falls above or below 300 ms.
 
 ## Budget and next experiments
 
 Current reference targets:
 
 - Python adapter p95 below 100 ms;
-- default Windows adapter p95 below 300 ms;
 - Git timeout no higher than 150 ms by default;
 - always render cwd identity even after a Git timeout.
+- measure Windows tail latency and real-session cancellation before claiming a
+  fixed process budget.
 
 Before adding dirty state, remote calls, or coordination signals, benchmark the
 complete command again. If Windows startup becomes visibly disruptive on common
-hardware, evaluate a small signed native binary or an opt-in Python adapter
+hardware, first test whether Claude's provided workspace fields can safely
+reduce Git work. `workspace.repo` does not include the local repository root, so
+it cannot replace root discovery without another reliable boundary signal.
+After that, evaluate a small signed native binary or an opt-in Python adapter
 rather than adding caches that can make identity stale.

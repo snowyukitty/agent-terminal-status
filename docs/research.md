@@ -26,9 +26,13 @@ The status payload directly provides:
 - session, model, context, cost, agent, PR, and other optional fields.
 
 Claude Code supplies `COLUMNS` and `LINES` to the captured command in version
-2.1.153 and later. The status line does not consume API tokens. It temporarily
-hides during some UI interactions, so "persistent" still has product-level
-limitations outside the adapter's control.
+2.1.153 and later. It does not currently rerun the command on terminal resize,
+as tracked in [#76988](https://github.com/anthropics/claude-code/issues/76988),
+so width can remain stale until the next event. The optional `refreshInterval`
+timer partially mitigates idle staleness but adds continuous process launches;
+it is intentionally not enabled by default here. The status line does not
+consume API tokens. It temporarily hides during some UI interactions, so
+"persistent" still has product-level limitations outside the adapter's control.
 
 The evidence supports using the provided current directory as authoritative,
 then collecting only the Git data needed for display. It does not support
@@ -123,6 +127,10 @@ native goal:
 | [#70132](https://github.com/anthropics/claude-code/issues/70132) | Exact request for visible current working directory across parallel projects |
 | [#81298](https://github.com/anthropics/claude-code/issues/81298) | Exact current project/directory context request |
 | [#74344](https://github.com/anthropics/claude-code/issues/74344) | Actual monorepo subfolder instead of only Git root |
+| [#79794](https://github.com/anthropics/claude-code/issues/79794) | Built-in project badge resolves linked worktrees to the main worktree name |
+| [#81454](https://github.com/anthropics/claude-code/issues/81454) | Unclear usable width and right-edge truncation |
+| [#73726](https://github.com/anthropics/claude-code/issues/73726) | Earlier request for terminal width in JSON; `COLUMNS` arrived in 2.1.153 |
+| [#76988](https://github.com/anthropics/claude-code/issues/76988) | Width-aware status lines do not rerun on terminal resize |
 | [#1669](https://github.com/anthropics/claude-code/issues/1669) | Long-running cwd confusion and wrong-directory behavior |
 | [#80011](https://github.com/anthropics/claude-code/issues/80011) | Keep status information visible during active processing |
 | [#74408](https://github.com/anthropics/claude-code/issues/74408) | Emit terminal cwd sequences for tab/window integration |
@@ -131,8 +139,9 @@ native goal:
 | [#77829](https://github.com/anthropics/claude-code/issues/77829) | Custom status-line parity in the VS Code extension |
 
 On the snapshot date, #70132, #81298, and #74344 were open and had no comments.
-The correct upstream action is to strengthen an existing focused issue, not
-create another one.
+#79794 is especially useful evidence because session cwd metadata is correct
+while Claude's visible linked-worktree identity is not. The correct upstream
+action is to strengthen an existing focused issue, not create another one.
 
 ## Public contribution surface
 

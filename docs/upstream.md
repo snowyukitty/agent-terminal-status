@@ -10,13 +10,22 @@ Equivalent requests already exist:
 - [#81298 — Display current working directory/project context](https://github.com/anthropics/claude-code/issues/81298)
 - [#74344 — Show working subfolder, not just Git root](https://github.com/anthropics/claude-code/issues/74344)
 
+Related open reports add implementation evidence:
+
+- [#79794 — Linked worktrees show the main worktree's project badge](https://github.com/anthropics/claude-code/issues/79794)
+- [#81454 — Usable status-line width is not documented](https://github.com/anthropics/claude-code/issues/81454)
+- [#73726 — Terminal width was missing from status command data](https://github.com/anthropics/claude-code/issues/73726)
+- [#76988 — Status line does not rerun on terminal resize](https://github.com/anthropics/claude-code/issues/76988)
+
 The public feature template requires a duplicate search. A new broad "workspace
 identity layer" issue would fragment the strongest immediate request. The
 recommended eventual action is a focused evidence comment on #70132, with a
 cross-reference to #74344 for monorepo behavior.
 
-Do not submit the draft below until public artifact links and real-use evidence
-are available.
+The duplicate snapshot was refreshed on 2026-07-27: #70132, #81298, and #74344
+were still open with no comments. Recheck immediately before posting.
+
+Do not submit the draft below until real-use evidence is available.
 
 ## Problem
 
@@ -28,6 +37,10 @@ adds friction and can itself become stale.
 
 Directory identity is unusually important because it tells the user where the
 next filesystem or Git action will land.
+
+This is not only a hypothetical custom-footer problem. Issue #79794 documents a
+current linked-worktree case where Claude Code's own project badge selects the
+main worktree name even though session cwd metadata is correct.
 
 ## Prototype evidence
 
@@ -48,18 +61,19 @@ Prototype behavior:
 - drops branch before machine when narrow;
 - performs no network calls;
 - bounds Git work to 150 ms and preserves path identity on timeout.
+- enforces terminal-cell width across every branch/host visibility mode.
 
 Verification currently includes Python tests plus the same behavioral suite in
 Windows PowerShell 5.1 and PowerShell 7. Scenarios cover malformed input,
 missing Git, spaces, non-ASCII paths, worktrees, detached HEAD, narrow
 terminals, installer rollback, and later user settings edits.
 
-Reference performance, including a fresh process and Git probe:
+Reference complete-command p95 across repeated batches on one Windows machine:
 
-| Adapter | Git p50 | Git p95 |
-| --- | ---: | ---: |
-| Python 3.12 | 62.3 ms | 65.5 ms |
-| Windows PowerShell 5.1 | 279.4 ms | 283.2 ms |
+| Adapter | Observed p95 |
+| --- | ---: |
+| Python 3.12 | 63–66 ms |
+| Windows PowerShell 5.1 | 279–306 ms |
 
 See [performance methodology](performance.md) and the
 [deterministic demo](demo.svg).
@@ -70,6 +84,8 @@ What this does **not** yet prove:
 - the best default for hostname visibility;
 - real latency on slow endpoints and network-mounted repositories;
 - persistence expectations during every active-turn UI state.
+- immediate rerendering after terminal resize; today the next event or an
+  optional `refreshInterval` is required.
 
 ## Proposed native experience
 
@@ -127,15 +143,19 @@ identity. Do not include private real paths or hostnames.
 >
 > The prototype covers Windows PowerShell, macOS/Linux through Python, linked
 > worktrees, detached HEAD, non-Git directories, spaces, non-ASCII paths, and
-> missing/slow Git. Complete-command p95 on the reference machine was 65.5 ms
-> for Python and 283.2 ms for the no-dependency Windows PowerShell adapter.
+> missing/slow Git. Repeated complete-command batches on one reference machine
+> measured Python p95 at 63–66 ms and the no-dependency Windows PowerShell
+> adapter at 279–306 ms. These are local ranges, not universal claims.
 >
 > A native segment could be much smaller and faster because Claude Code already
 > owns workspace and Git state. My suggested minimum is: always-visible actual
 > cwd, repository-relative when applicable, adaptive middle shortening, and an
 > existing config path to disable/replace it. Hostname can remain opt-in.
 >
-> Prototype/demo, tests, measurements, and edge cases: **[PUBLIC URL REQUIRED]**.
+> Prototype, tests, and measurements:
+> https://github.com/snowyukitty/agent-terminal-status
+>
+> Live demo: https://agent-terminal-status.gldtestuser.chatgpt.site
 > Related monorepo-subfolder request: #74344.
 
 Keep the posted comment shorter if the issue has evolved. Re-read the full
@@ -152,7 +172,7 @@ thread immediately before posting and avoid repeating newer evidence.
 - [ ] One week of regular multi-session use
 - [ ] Real Claude Code screenshots on Windows and POSIX
 - [ ] SSH, WSL, and container observations
-- [ ] Sanitized public repository/demo URL
+- [x] Sanitized public repository/demo URL
 - [ ] Fresh duplicate/thread review immediately before posting
 
 Until those unchecked items are resolved, this document is preparation, not a

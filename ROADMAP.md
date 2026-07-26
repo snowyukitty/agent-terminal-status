@@ -17,13 +17,14 @@ Implemented:
 - Python adapter for macOS, Linux, and other Python environments;
 - reversible, idempotent user-settings installers;
 - deterministic demo, benchmark, and cross-platform CI.
+- width-invariant rendering across every visibility mode;
+- portable, privacy-scanned public website build and demo.
 
 Before calling 0.1 a public release:
 
 - use it across several real Claude Code sessions for at least a week;
 - capture a real in-product screenshot in Windows and one POSIX terminal;
 - validate SSH, WSL, and container host aliases on actual remote sessions;
-- publish installation URLs only after repository visibility is chosen;
 - collect feedback on whether hostname belongs in `auto` or should be opt-in.
 
 ## Next — validate development identity
@@ -40,6 +41,8 @@ These are credible next experiments, not committed default fields:
   installation trust and simplicity;
 - gather evidence on current-directory changes during long-running sessions and
   whether an optional refresh interval is warranted.
+- test whether documented `workspace.repo` / `workspace.git_worktree` fields can
+  reduce Git process work without guessing the local repository root.
 
 Acceptance for a new default signal:
 
