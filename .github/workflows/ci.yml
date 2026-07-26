@@ -33,16 +33,15 @@ jobs:
           test ! -d "$config_dir/agent-terminal-status"
 
   powershell:
-    name: ${{ matrix.shell }}
+    name: PowerShell · Windows
     runs-on: windows-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        shell: [powershell, pwsh]
     steps:
       - uses: actions/checkout@v4
-      - name: Run PowerShell tests
-        shell: ${{ matrix.shell }}
+      - name: Run Windows PowerShell 5.1 tests
+        shell: powershell
+        run: .\tests\run.ps1
+      - name: Run PowerShell 7 tests
+        shell: pwsh
         run: .\tests\run.ps1
 
   site:
