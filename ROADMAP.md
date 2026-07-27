@@ -26,6 +26,8 @@ Before calling 0.1 a public release:
 - capture a real in-product screenshot in Windows and one POSIX terminal;
 - validate SSH, WSL, and container host aliases on actual remote sessions;
 - collect feedback on whether hostname belongs in `auto` or should be opt-in.
+- after the final website deployment, manually dispatch `Production smoke` and
+  record a successful run for the deployed commit.
 
 ## Next — validate development identity
 

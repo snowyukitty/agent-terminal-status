@@ -55,8 +55,9 @@ const stylesheetPath = html.match(/href="([^"]+\.css)"/)?.[1];
 assert.ok(stylesheetPath, "The deployed page did not reference a stylesheet.");
 assert.match(stylesheetPath, /^\/delivery\/assets\//);
 assert.doesNotMatch(html, /(?:href|src)="\/assets\//);
-const stylesheet = await fetchOk(stylesheetPath);
-assertSecurityHeaders(stylesheet, stylesheetPath);
+const stylesheetProbePath = probe(stylesheetPath);
+const stylesheet = await fetchOk(stylesheetProbePath);
+assertSecurityHeaders(stylesheet, stylesheetProbePath);
 assert.equal(stylesheet.headers.get("cache-control"), immutable);
 const css = await stylesheet.text();
 assert.match(css, /\/font-assets\/Geist-Variable\.woff2/);
@@ -73,8 +74,9 @@ const scriptPaths = [
 assert.ok(scriptPaths.length > 0, "The deployed page did not reference scripts.");
 for (const scriptPath of scriptPaths) {
   assert.match(scriptPath, /^\/delivery\/assets\//);
-  const response = await fetchOk(scriptPath);
-  assertSecurityHeaders(response, scriptPath);
+  const scriptProbePath = probe(scriptPath);
+  const response = await fetchOk(scriptProbePath);
+  assertSecurityHeaders(response, scriptProbePath);
   assert.equal(response.headers.get("cache-control"), immutable);
   assert.match(
     response.headers.get("content-type") ?? "",

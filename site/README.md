@@ -81,8 +81,10 @@ accidental public interface.
 
 Production verification is separate from push CI because a push can finish
 before a Sites deployment. The `Production smoke` GitHub Actions workflow runs
-on demand after deployment and on a weekly schedule, avoiding that race while
-keeping the live edge behavior observable.
+on demand after deployment and on a daily schedule, avoiding that race while
+keeping the live edge behavior observable. After every Sites deployment,
+manually dispatch that workflow and confirm it succeeds for the deployed
+commit; the daily run is a backstop, not deployment confirmation.
 
 HSTS remains a hosting-layer decision. The project does not install a
 long-lived browser transport pin on a provider-owned subdomain; reconsider it
