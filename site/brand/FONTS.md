@@ -10,5 +10,5 @@ Vercel's [`geist-font`](https://github.com/vercel/geist-font) repository:
 | `GeistMono-Variable.woff2` | `fba8f577f38a2bbcbe818efa6348dd58f36303a10b8737c42fefad275be563ab` |
 
 They are distributed under the SIL Open Font License copied to
-`public/fonts/LICENSE-Geist.txt`. The files are committed so production builds
+`worker/static/LICENSE-Geist.txt`. The files are committed so production builds
 do not fetch fonts or depend on build-machine paths.

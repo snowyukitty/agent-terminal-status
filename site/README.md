@@ -29,9 +29,9 @@ or renamed assets cannot survive from an earlier build or cache.
 `npm run verify:production` checks the deployed origin rather than the local
 Worker alone. It verifies the document, Worker-delivered stylesheet, embedded
 public assets, font routes, cache policy, fixed-origin metadata, and the
-blocked legacy font paths. It also reports whether the hosting provider exposes
-the generated asset store directly, without treating that implementation path
-as the website's delivery interface.
+blocked legacy font and build-internal paths. It also reports whether the
+hosting provider exposes the generated asset store directly, without treating
+that implementation path as the website's delivery interface.
 
 ## Structure
 
@@ -51,7 +51,9 @@ local removes a build-time network dependency and prevents build-machine paths
 from entering the deployed CSS. Fonts and stable public files are compiled into
 the Worker rather than copied into the provider's public asset directory. The
 stylesheet uses `/font-assets/` routes with explicit WOFF2 MIME and immutable
-caching; the old `/fonts/` paths have no deployed files behind them.
+caching. The accompanying license remains available at
+`/font-assets/LICENSE-Geist.txt` and is advertised on each font response with
+`rel="license"`; the old `/fonts/` paths have no deployed files behind them.
 
 The generated Workers configuration deliberately enables
 [`assets.run_worker_first`](https://developers.cloudflare.com/workers/static-assets/binding/#run_worker_first).
@@ -68,6 +70,17 @@ content-hashed build output and are never referenced by rendered HTML. They are
 not treated as a security boundary. `npm run verify:production` checks the
 browser-visible delivery paths and reports the backing-route status so a
 platform behavior change will be visible rather than assumed.
+
+After vinext finishes, `build/finalize-dist.mjs` removes its client manifest,
+Pages-only headers file, upload-ignore file, and any legacy font directory.
+The build then requires `dist/client` to contain only the generated hashed
+`assets/` directory. This prevents build-time metadata from becoming an
+accidental public interface.
+
+Production verification is separate from push CI because a push can finish
+before a Sites deployment. The `Production smoke` GitHub Actions workflow runs
+on demand after deployment and on a weekly schedule, avoiding that race while
+keeping the live edge behavior observable.
 
 HSTS remains a hosting-layer decision. The project does not install a
 long-lived browser transport pin on a provider-owned subdomain; reconsider it

@@ -83,11 +83,24 @@ for (const filename of [
   assertSecurityHeaders(response, pathname);
   assert.match(response.headers.get("content-type") ?? "", /^font\/woff2\b/i);
   assert.equal(response.headers.get("cache-control"), immutable);
+  assert.equal(
+    response.headers.get("link"),
+    '</font-assets/LICENSE-Geist.txt>; rel="license"',
+  );
   assert.ok(
     (await response.arrayBuffer()).byteLength > 60_000,
     `${pathname} returned an implausibly small font`,
   );
 }
+
+const fontLicensePath = "/font-assets/LICENSE-Geist.txt";
+const fontLicense = await fetchOk(fontLicensePath);
+assertSecurityHeaders(fontLicense, fontLicensePath);
+assert.match(
+  fontLicense.headers.get("content-type") ?? "",
+  /^text\/plain\b/i,
+);
+assert.match(await fontLicense.text(), /SIL OPEN FONT LICENSE Version 1\.1/);
 
 for (const [pathname, contentType] of [
   ["/apple-touch-icon.png", /^image\/png\b/i],
@@ -113,7 +126,11 @@ for (const [pathname, contentType] of [
 for (const pathname of [
   "/fonts/Geist-Variable.woff2",
   "/fonts/GeistMono-Variable.woff2",
+  "/fonts/LICENSE-Geist.txt",
   "/font-assets/Missing.woff2",
+  "/.vite/manifest.json",
+  "/_headers",
+  "/.assetsignore",
 ]) {
   const response = await fetch(url(pathname));
   assert.equal(response.status, 404, `${pathname} returned ${response.status}`);

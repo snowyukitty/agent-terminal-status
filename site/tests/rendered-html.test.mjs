@@ -164,7 +164,21 @@ test("applies security headers and immutable font caching", async () => {
   );
   assert.equal(font.headers.get("content-type"), "font/woff2");
   assert.equal(font.headers.get("x-content-type-options"), "nosniff");
+  assert.equal(
+    font.headers.get("link"),
+    '</font-assets/LICENSE-Geist.txt>; rel="license"',
+  );
   assert.ok((await font.arrayBuffer()).byteLength > 60_000);
+
+  const fontLicense = await render({
+    pathname: "/font-assets/LICENSE-Geist.txt",
+  });
+  assert.equal(fontLicense.status, 200);
+  assert.match(
+    fontLicense.headers.get("content-type") ?? "",
+    /^text\/plain\b/i,
+  );
+  assert.match(await fontLicense.text(), /SIL OPEN FONT LICENSE Version 1\.1/);
 
   const missingFont = await render({ pathname: "/font-assets/missing.woff2" });
   assert.equal(missingFont.status, 404);
@@ -215,6 +229,19 @@ test("applies security headers and immutable font caching", async () => {
   });
   assert.equal(directAsset.status, 404);
   assert.equal(directAssetReachedBinding, false);
+
+  for (const pathname of [
+    "/.vite/manifest.json",
+    "/_headers",
+    "/.assetsignore",
+  ]) {
+    const internalAsset = await render({ pathname });
+    assert.equal(internalAsset.status, 404);
+    assert.equal(
+      internalAsset.headers.get("x-content-type-options"),
+      "nosniff",
+    );
+  }
 
   for (const [pathname, contentType] of [
     ["/favicon.svg", /^image\/svg\+xml/],
@@ -268,9 +295,9 @@ test("build output is portable and routes assets through the Worker", async () =
     )
   ).join("\n");
 
-  assert.match(
+  assert.equal(
     JSON.parse(packageJson).scripts.build,
-    /^node build\/clean-dist\.mjs && /,
+    "node build/clean-dist.mjs && vinext build && node build/finalize-dist.mjs",
   );
   assert.doesNotMatch(
     bundle,
@@ -286,6 +313,7 @@ test("build output is portable and routes assets through the Worker", async () =
   await Promise.all([
     access(new URL("../worker/static/Geist-Variable.woff2", import.meta.url)),
     access(new URL("../worker/static/GeistMono-Variable.woff2", import.meta.url)),
+    access(new URL("../worker/static/LICENSE-Geist.txt", import.meta.url)),
     assert.rejects(
       access(new URL("../dist/client/fonts/Geist-Variable.woff2", import.meta.url)),
     ),
@@ -298,6 +326,7 @@ test("build output is portable and routes assets through the Worker", async () =
       access(new URL("../dist/client/assets/_vinext_fonts", import.meta.url)),
     ),
   ]);
+  assert.deepEqual((await readdir(join(dist, "client"))).sort(), ["assets"]);
 });
 
 test("keeps the shipped site frontend-only and free of starter residue", async () => {

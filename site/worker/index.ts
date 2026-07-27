@@ -6,6 +6,7 @@ import faviconData from "./static/favicon.ico?inline";
 import faviconSvg from "./static/favicon.svg?raw";
 import geistFontData from "./static/Geist-Variable.woff2?inline";
 import geistMonoFontData from "./static/GeistMono-Variable.woff2?inline";
+import geistLicense from "./static/LICENSE-Geist.txt?raw";
 import icon192Data from "./static/icon-192.png?inline";
 import icon512Data from "./static/icon-512.png?inline";
 import icon512MaskableData from "./static/icon-512-maskable.png?inline";
@@ -87,6 +88,10 @@ const embeddedAssets = new Map<string, EmbeddedAsset>([
   [
     "/font-assets/GeistMono-Variable.woff2",
     binaryAsset(geistMonoFontData, "font/woff2", immutable),
+  ],
+  [
+    "/font-assets/LICENSE-Geist.txt",
+    textAsset(geistLicense, "text/plain; charset=utf-8"),
   ],
   ["/apple-touch-icon.png", binaryAsset(appleTouchIconData, "image/png")],
   ["/favicon.ico", binaryAsset(faviconData, "image/x-icon")],
@@ -188,6 +193,16 @@ export default {
     const headers = new Headers(response.headers);
     for (const [name, value] of Object.entries(securityHeaders)) {
       headers.set(name, value);
+    }
+    if (
+      embeddedAsset &&
+      url.pathname.startsWith("/font-assets/") &&
+      url.pathname.endsWith(".woff2")
+    ) {
+      headers.set(
+        "Link",
+        '</font-assets/LICENSE-Geist.txt>; rel="license"',
+      );
     }
 
     return new Response(response.body, {
