@@ -61,6 +61,7 @@ function recordingFetch(requests) {
           `<link rel="canonical" href="${productionOrigin}/">`,
           '<link rel="stylesheet" href="/delivery/assets/site.css">',
           '<script src="/delivery/assets/site.js"></script>',
+          '<script src="/delivery/assets/other.js"></script>',
         ].join(""),
         { contentType: "text/html" },
       );
@@ -76,7 +77,10 @@ function recordingFetch(requests) {
       );
     }
 
-    if (requestUrl.pathname === "/delivery/assets/site.js") {
+    if (
+      requestUrl.pathname === "/delivery/assets/site.js" ||
+      requestUrl.pathname === "/delivery/assets/other.js"
+    ) {
       return response("export {};", {
         cacheControl: immutable,
         contentType: "text/javascript",
@@ -174,7 +178,14 @@ function assertProbeContract(requests) {
   const deliveryRequests = requests.filter(({ url }) =>
     url.pathname.startsWith("/delivery/assets/"),
   );
-  assert.equal(deliveryRequests.length, 2);
+  assert.deepEqual(
+    deliveryRequests.map(({ url }) => url.pathname).sort(),
+    [
+      "/delivery/assets/other.js",
+      "/delivery/assets/site.css",
+      "/delivery/assets/site.js",
+    ],
+  );
   assert.ok(
     deliveryRequests.every(
       ({ url }) => url.searchParams.get("production-smoke") === token,
@@ -191,8 +202,23 @@ function assertProbeContract(requests) {
     "The provider backing-route diagnostic must not use a stale cache key",
   );
 
-  const rootRequest = requests.find(({ url }) => url.pathname === "/");
-  assert.equal(rootRequest?.options?.headers?.["x-forwarded-host"], "evil.example");
+  const rootRequests = requests.filter(({ url }) => url.pathname === "/");
+  assert.equal(rootRequests.length, 2);
+  const forwardingRequest = rootRequests.find(
+    ({ url }) => !url.searchParams.has("production-smoke"),
+  );
+  const freshDocumentRequest = rootRequests.find(({ url }) =>
+    url.searchParams.has("production-smoke"),
+  );
+  assert.equal(
+    forwardingRequest?.options?.headers?.["x-forwarded-host"],
+    "evil.example",
+  );
+  assert.equal(
+    freshDocumentRequest?.url.searchParams.get("production-smoke"),
+    token,
+    "The asset graph must come from a freshly probed document",
+  );
   return token;
 }
 

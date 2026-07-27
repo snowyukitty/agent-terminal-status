@@ -329,6 +329,31 @@ try {
         }
     }
 
+    Test-Case 'Git timeout defaults and clamps' {
+        $savedGitTimeout = $env:ATS_GIT_TIMEOUT_MS
+        try {
+            Remove-Item Env:ATS_GIT_TIMEOUT_MS -ErrorAction SilentlyContinue
+            Assert-Equal 150 (Get-AtsGitTimeoutMs) 'Git timeout default changed.'
+
+            $env:ATS_GIT_TIMEOUT_MS = '1'
+            Assert-Equal 25 (Get-AtsGitTimeoutMs) 'Git timeout minimum clamp changed.'
+
+            $env:ATS_GIT_TIMEOUT_MS = '99999'
+            Assert-Equal 2000 (Get-AtsGitTimeoutMs) 'Git timeout maximum clamp changed.'
+
+            $env:ATS_GIT_TIMEOUT_MS = 'not-a-number'
+            Assert-Equal 150 (Get-AtsGitTimeoutMs) 'Invalid Git timeout did not use the default.'
+        }
+        finally {
+            if ($null -eq $savedGitTimeout) {
+                Remove-Item Env:ATS_GIT_TIMEOUT_MS -ErrorAction SilentlyContinue
+            }
+            else {
+                $env:ATS_GIT_TIMEOUT_MS = $savedGitTimeout
+            }
+        }
+    }
+
     Test-Case 'Git branch detached HEAD and linked worktree' {
         $temporaryRoot = Join-Path ([IO.Path]::GetTempPath()) ('ats-git-' + [Guid]::NewGuid().ToString('N'))
         $repo = Join-Path $temporaryRoot 'repo with spaces'
@@ -362,7 +387,12 @@ try {
             Assert-Equal ((Resolve-Path $worktree).Path -replace '\\', '/') (ConvertTo-AtsSlashPath $worktreeIdentity.Root) 'Worktree root mismatch.'
         }
         finally {
-            $env:ATS_GIT_TIMEOUT_MS = $savedGitTimeout
+            if ($null -eq $savedGitTimeout) {
+                Remove-Item Env:ATS_GIT_TIMEOUT_MS -ErrorAction SilentlyContinue
+            }
+            else {
+                $env:ATS_GIT_TIMEOUT_MS = $savedGitTimeout
+            }
             if (Test-Path -LiteralPath $temporaryRoot) {
                 $resolvedTemporary = [IO.Path]::GetFullPath($temporaryRoot)
                 $tempBase = [IO.Path]::GetFullPath([IO.Path]::GetTempPath())

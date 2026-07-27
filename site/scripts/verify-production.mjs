@@ -40,16 +40,25 @@ async function fetchOk(pathname, options) {
   return response;
 }
 
-const page = await fetchOk("/", {
+const forwardingPage = await fetchOk("/", {
   headers: {
     "x-forwarded-host": "evil.example",
     "x-forwarded-proto": "http",
   },
 });
-assertSecurityHeaders(page, "/");
+assertSecurityHeaders(forwardingPage, "/");
+const forwardingHtml = await forwardingPage.text();
+assert.match(
+  forwardingHtml,
+  new RegExp(`<link rel="canonical" href="${origin.origin}/"`),
+);
+assert.doesNotMatch(forwardingHtml, /evil\.example/);
+
+const pageProbePath = probe("/");
+const page = await fetchOk(pageProbePath);
+assertSecurityHeaders(page, pageProbePath);
 const html = await page.text();
 assert.match(html, new RegExp(`<link rel="canonical" href="${origin.origin}/"`));
-assert.doesNotMatch(html, /evil\.example/);
 
 const stylesheetPath = html.match(/href="([^"]+\.css)"/)?.[1];
 assert.ok(stylesheetPath, "The deployed page did not reference a stylesheet.");

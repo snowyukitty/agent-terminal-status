@@ -287,6 +287,21 @@ class StatusLineTests(unittest.TestCase):
         environment = self.base_env(PATH="")
         self.assertIsNone(statusline.collect_git("/work/repo", environment))
 
+    def test_git_timeout_defaults_and_clamps(self) -> None:
+        self.assertEqual(statusline._git_timeout_ms({}), 150)
+        self.assertEqual(
+            statusline._git_timeout_ms({"ATS_GIT_TIMEOUT_MS": "1"}),
+            25,
+        )
+        self.assertEqual(
+            statusline._git_timeout_ms({"ATS_GIT_TIMEOUT_MS": "99999"}),
+            2_000,
+        )
+        self.assertEqual(
+            statusline._git_timeout_ms({"ATS_GIT_TIMEOUT_MS": "not-a-number"}),
+            150,
+        )
+
     def test_git_repo_branch_detached_head_and_worktree(self) -> None:
         git_env = self.base_env(ATS_GIT_TIMEOUT_MS="2000")
         with tempfile.TemporaryDirectory(prefix="ats git 日本語 ") as temporary:

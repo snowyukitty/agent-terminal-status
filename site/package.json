@@ -9,7 +9,7 @@
     "dev": "vinext dev",
     "build": "node build/clean-dist.mjs && vinext build && node build/finalize-dist.mjs",
     "start": "vinext start",
-    "test": "npm run build && node --test",
+    "test": "npm run build && node --test \"tests/*.test.mjs\"",
     "lint": "oxlint app worker build scripts tests --deny-warnings",
     "verify:production": "node scripts/verify-production.mjs"
   },

@@ -91,6 +91,10 @@ the Sites saved-version source SHA. Byte-level artifact comparison establishes
 content equivalence, not the provider's recorded revision. The daily run is a
 health backstop, not deployment confirmation.
 
+The verifier fetches the document twice: a bare request exercises untrusted
+forwarding headers, while a uniquely probed request supplies the fresh asset
+graph for the rest of the delivery checks.
+
 HSTS remains a hosting-layer decision. The project does not install a
 long-lived browser transport pin on a provider-owned subdomain; reconsider it
 if the site moves to a custom domain controlled by the project.
