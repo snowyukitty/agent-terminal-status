@@ -27,37 +27,47 @@ only the site's resolved `dist` and `.vinext` generated directories so deleted
 or renamed assets cannot survive from an earlier build or cache.
 
 `npm run verify:production` checks the deployed origin rather than the local
-Worker alone. It verifies the document, generated stylesheet, public assets,
-font routes, cache policy, fixed-origin metadata, and the blocked legacy font
-paths.
+Worker alone. It verifies the document, Worker-delivered stylesheet, embedded
+public assets, font routes, cache policy, fixed-origin metadata, and the
+blocked legacy font paths. It also reports whether the hosting provider exposes
+the generated asset store directly, without treating that implementation path
+as the website's delivery interface.
 
 ## Structure
 
 - `app/page.tsx` — product content and semantic layout
 - `app/globals.css` — responsive visual system
 - `app/CopyCommand.tsx` — small clipboard enhancement
-- `public/` — favicon, crawler files, compact social preview, and self-hosted
-  Geist variable fonts
-- `worker/index.ts` — response security plus a small font-asset pass-through
-  that normalizes MIME and immutable caching
+- `worker/static/` — favicon, crawler files, compact social preview, and
+  self-hosted Geist variable fonts bundled into the Worker
+- `worker/index.ts` — embedded static delivery, generated-asset routing, and
+  one response security policy
 - `scripts/verify-production.mjs` — read-only deployment smoke test
 - `tests/rendered-html.test.mjs` — production-render checks
 
 The two Geist font files come from the official `geist` 1.7.2 package and are
 distributed under the SIL Open Font License included beside them. Keeping them
 local removes a build-time network dependency and prevents build-machine paths
-from entering the deployed CSS. All physical assets run through the Worker
-before delivery so its security policy applies consistently. The stylesheet
-uses the Worker's `/font-assets/` routes, which fetch the packaged font through
-the asset binding and apply the intended MIME and cache policy; the underlying
-`/fonts/` paths are not part of the public interface.
+from entering the deployed CSS. Fonts and stable public files are compiled into
+the Worker rather than copied into the provider's public asset directory. The
+stylesheet uses `/font-assets/` routes with explicit WOFF2 MIME and immutable
+caching; the old `/fonts/` paths have no deployed files behind them.
 
 The generated Workers configuration deliberately enables
 [`assets.run_worker_first`](https://developers.cloudflare.com/workers/static-assets/binding/#run_worker_first).
-This adds one globally distributed Worker hop to physical assets in exchange
-for one observable response policy and immutable caching for content-hashed
-bundles. Revisit selective routing only if real traffic shows a meaningful
-latency or invocation-cost reason.
+Vite emits browser references under `/delivery/assets/`; the Worker maps that
+prefix to the generated, content-hashed `/assets/` backing store and applies
+security headers plus immutable caching. This adds one globally distributed
+Worker hop to assets the page actually loads in exchange for an observable,
+testable response policy.
+
+The Sites deployment layer observed on 2026-07-27 still served a directly
+requested generated `/assets/` file before Worker routing despite the generated
+`run_worker_first` setting. Those provider storage URLs contain only trusted,
+content-hashed build output and are never referenced by rendered HTML. They are
+not treated as a security boundary. `npm run verify:production` checks the
+browser-visible delivery paths and reports the backing-route status so a
+platform behavior change will be visible rather than assumed.
 
 HSTS remains a hosting-layer decision. The project does not install a
 long-lived browser transport pin on a provider-owned subdomain; reconsider it

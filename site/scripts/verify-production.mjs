@@ -45,6 +45,8 @@ assert.doesNotMatch(html, /evil\.example/);
 
 const stylesheetPath = html.match(/href="([^"]+\.css)"/)?.[1];
 assert.ok(stylesheetPath, "The deployed page did not reference a stylesheet.");
+assert.match(stylesheetPath, /^\/delivery\/assets\//);
+assert.doesNotMatch(html, /(?:href|src)="\/assets\//);
 const stylesheet = await fetchOk(stylesheetPath);
 assertSecurityHeaders(stylesheet, stylesheetPath);
 assert.equal(stylesheet.headers.get("cache-control"), immutable);
@@ -52,6 +54,21 @@ const css = await stylesheet.text();
 assert.match(css, /\/font-assets\/Geist-Variable\.woff2/);
 assert.match(css, /\/font-assets\/GeistMono-Variable\.woff2/);
 assert.doesNotMatch(css, /url\(["']?\/fonts\//);
+
+const scriptPaths = [
+  ...new Set([...html.matchAll(/src="([^"]+\.js)"/g)].map((match) => match[1])),
+];
+assert.ok(scriptPaths.length > 0, "The deployed page did not reference scripts.");
+for (const scriptPath of scriptPaths) {
+  assert.match(scriptPath, /^\/delivery\/assets\//);
+  const response = await fetchOk(scriptPath);
+  assertSecurityHeaders(response, scriptPath);
+  assert.equal(response.headers.get("cache-control"), immutable);
+  assert.match(
+    response.headers.get("content-type") ?? "",
+    /^(?:application|text)\/javascript\b/i,
+  );
+}
 
 for (const filename of [
   "Geist-Variable.woff2",
@@ -68,15 +85,25 @@ for (const filename of [
   );
 }
 
-for (const pathname of [
-  "/favicon.svg",
-  "/og.jpg",
-  "/site.webmanifest",
-  "/robots.txt",
-  "/sitemap.xml",
+for (const [pathname, contentType] of [
+  ["/apple-touch-icon.png", /^image\/png\b/i],
+  ["/favicon.ico", /^image\/x-icon\b/i],
+  ["/favicon.svg", /^image\/svg\+xml\b/i],
+  ["/icon-192.png", /^image\/png\b/i],
+  ["/icon-512.png", /^image\/png\b/i],
+  ["/icon-512-maskable.png", /^image\/png\b/i],
+  ["/og.jpg", /^image\/jpeg\b/i],
+  ["/site.webmanifest", /^application\/manifest\+json\b/i],
+  ["/robots.txt", /^text\/plain\b/i],
+  ["/sitemap.xml", /^application\/xml\b/i],
 ]) {
   const response = await fetchOk(pathname);
   assertSecurityHeaders(response, pathname);
+  assert.match(response.headers.get("content-type") ?? "", contentType);
+  assert.ok(
+    Number(response.headers.get("content-length")) > 0,
+    `${pathname} has no content length`,
+  );
 }
 
 for (const pathname of [
@@ -90,4 +117,17 @@ for (const pathname of [
   assert.notEqual(response.headers.get("cache-control"), immutable);
 }
 
-console.log(`Production delivery verified at ${origin.origin}`);
+const backingStylesheetPath = stylesheetPath.replace(
+  /^\/delivery\/assets\//,
+  "/assets/",
+);
+const backingResponse = await fetch(url(backingStylesheetPath));
+assert.ok(
+  backingResponse.status === 200 || backingResponse.status === 404,
+  `${backingStylesheetPath} returned ${backingResponse.status}`,
+);
+
+console.log(
+  `Production delivery verified at ${origin.origin} ` +
+    `(provider backing route: ${backingResponse.status})`,
+);

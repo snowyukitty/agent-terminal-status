@@ -25,6 +25,9 @@ export default defineConfig(async () => {
   const { cloudflare } = await import("@cloudflare/vite-plugin");
 
   return {
+    // Generated browser bundles live in the asset binding at /assets, while
+    // public references use this Worker-controlled delivery prefix.
+    base: "/delivery/",
     server: isCodexSeatbeltSandbox
       ? { watch: { useFsEvents: false, usePolling: true } }
       : undefined,

@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 
 const productionOrigin =
   "https://agent-terminal-status.gldtestuser.chatgpt.site";
+const immutable = "public, max-age=31536000, immutable";
 
 async function render({
   pathname = "/",
@@ -121,6 +122,8 @@ test("server-renders the complete product landing page", async () => {
     html,
     /href="https:\/\/agent-terminal-status\.gldtestuser\.chatgpt\.site\/site\.webmanifest"/,
   );
+  assert.match(html, /(?:href|src)="\/delivery\/assets\//);
+  assert.doesNotMatch(html, /(?:href|src)="\/assets\//);
   assert.doesNotMatch(html, /codex-preview|SkeletonPreview|Your site is taking shape/);
 });
 
@@ -153,12 +156,6 @@ test("applies security headers and immutable font caching", async () => {
 
   const font = await render({
     pathname: "/font-assets/Geist-Variable.woff2",
-    assetResponse: (request) => {
-      assert.equal(new URL(request.url).pathname, "/fonts/Geist-Variable.woff2");
-      return new Response(new Uint8Array([0, 1, 2]), {
-        headers: { "content-type": "application/octet-stream" },
-      });
-    },
   });
   assert.equal(font.status, 200);
   assert.equal(
@@ -167,6 +164,7 @@ test("applies security headers and immutable font caching", async () => {
   );
   assert.equal(font.headers.get("content-type"), "font/woff2");
   assert.equal(font.headers.get("x-content-type-options"), "nosniff");
+  assert.ok((await font.arrayBuffer()).byteLength > 60_000);
 
   const missingFont = await render({ pathname: "/font-assets/missing.woff2" });
   assert.equal(missingFont.status, 404);
@@ -188,7 +186,7 @@ test("applies security headers and immutable font caching", async () => {
   assert.equal(directFont.headers.get("x-content-type-options"), "nosniff");
 
   const stylesheet = await render({
-    pathname: "/assets/index-contenthash.css",
+    pathname: "/delivery/assets/index-contenthash.css",
     assetResponse: (request) => {
       assert.equal(
         new URL(request.url).pathname,
@@ -207,19 +205,30 @@ test("applies security headers and immutable font caching", async () => {
   );
   assert.equal(stylesheet.headers.get("x-content-type-options"), "nosniff");
 
-  const publicAsset = await render({
-    pathname: "/favicon.svg",
-    assetResponse: () =>
-      new Response("<svg></svg>", {
-        headers: { "content-type": "image/svg+xml" },
-      }),
+  let directAssetReachedBinding = false;
+  const directAsset = await render({
+    pathname: "/assets/index-contenthash.css",
+    assetResponse: () => {
+      directAssetReachedBinding = true;
+      return new Response("unexpected");
+    },
   });
-  assert.equal(publicAsset.status, 200);
-  assert.equal(publicAsset.headers.get("x-frame-options"), "DENY");
-  assert.notEqual(
-    publicAsset.headers.get("cache-control"),
-    "public, max-age=31536000, immutable",
-  );
+  assert.equal(directAsset.status, 404);
+  assert.equal(directAssetReachedBinding, false);
+
+  for (const [pathname, contentType] of [
+    ["/favicon.svg", /^image\/svg\+xml/],
+    ["/og.jpg", /^image\/jpeg/],
+    ["/site.webmanifest", /^application\/manifest\+json/],
+    ["/robots.txt", /^text\/plain/],
+    ["/sitemap.xml", /^application\/xml/],
+  ]) {
+    const publicAsset = await render({ pathname });
+    assert.equal(publicAsset.status, 200);
+    assert.match(publicAsset.headers.get("content-type") ?? "", contentType);
+    assert.equal(publicAsset.headers.get("x-frame-options"), "DENY");
+    assert.notEqual(publicAsset.headers.get("cache-control"), immutable);
+  }
 });
 
 test("keeps small informational text at AA contrast", async () => {
@@ -275,8 +284,16 @@ test("build output is portable and routes assets through the Worker", async () =
   assert.equal(wrangler.assets?.run_worker_first, true);
 
   await Promise.all([
-    access(new URL("../dist/client/fonts/Geist-Variable.woff2", import.meta.url)),
-    access(new URL("../dist/client/fonts/GeistMono-Variable.woff2", import.meta.url)),
+    access(new URL("../worker/static/Geist-Variable.woff2", import.meta.url)),
+    access(new URL("../worker/static/GeistMono-Variable.woff2", import.meta.url)),
+    assert.rejects(
+      access(new URL("../dist/client/fonts/Geist-Variable.woff2", import.meta.url)),
+    ),
+    assert.rejects(
+      access(new URL("../dist/client/fonts/GeistMono-Variable.woff2", import.meta.url)),
+    ),
+    assert.rejects(access(new URL("../dist/client/favicon.svg", import.meta.url))),
+    assert.rejects(access(new URL("../dist/client/og.jpg", import.meta.url))),
     assert.rejects(
       access(new URL("../dist/client/assets/_vinext_fonts", import.meta.url)),
     ),
@@ -322,13 +339,13 @@ test("keeps the shipped site frontend-only and free of starter residue", async (
 });
 
 test("ships compact social and crawler assets", async () => {
-  const socialImage = new URL("../public/og.jpg", import.meta.url);
+  const socialImage = new URL("../worker/static/og.jpg", import.meta.url);
   const imageStats = await stat(socialImage);
 
   assert.ok(imageStats.size < 200_000, `og.jpg is ${imageStats.size} bytes`);
   await Promise.all([
-    access(new URL("../public/robots.txt", import.meta.url)),
-    access(new URL("../public/sitemap.xml", import.meta.url)),
+    access(new URL("../worker/static/robots.txt", import.meta.url)),
+    access(new URL("../worker/static/sitemap.xml", import.meta.url)),
   ]);
 });
 
