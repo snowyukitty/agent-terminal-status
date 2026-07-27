@@ -32,7 +32,8 @@ deleted or renamed assets cannot survive from an earlier build or cache.
 - `app/CopyCommand.tsx` — small clipboard enhancement
 - `public/` — favicon, crawler files, compact social preview, and self-hosted
   Geist variable fonts
-- `worker/index.ts` — response security and immutable font-cache policy
+- `public/_headers` — security and immutable cache policy for edge-served assets
+- `worker/index.ts` — matching response security for server-rendered routes
 - `tests/rendered-html.test.mjs` — production-render checks
 
 The two Geist font files come from the official `geist` 1.7.2 package and are

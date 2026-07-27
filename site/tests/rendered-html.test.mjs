@@ -172,6 +172,32 @@ test("applies security headers and immutable font caching", async () => {
     missingFont.headers.get("cache-control"),
     "public, max-age=31536000, immutable",
   );
+
+  const staticHeaders = await readFile(
+    new URL("../public/_headers", import.meta.url),
+    "utf8",
+  );
+  assert.match(staticHeaders, /^\/\*\s*$/m);
+  assert.match(staticHeaders, /X-Content-Type-Options:\s*nosniff/);
+  for (const filename of [
+    "Geist-Variable.woff2",
+    "GeistMono-Variable.woff2",
+  ]) {
+    assert.match(staticHeaders, new RegExp(`/fonts/${filename}`));
+  }
+  assert.equal(
+    (
+      staticHeaders.match(
+        /Cache-Control:\s*public, max-age=31536000, immutable/g,
+      ) ?? []
+    ).length,
+    2,
+  );
+  assert.equal(
+    (staticHeaders.match(/Content-Type:\s*font\/woff2/g) ?? []).length,
+    2,
+  );
+  await access(new URL("../dist/client/_headers", import.meta.url));
 });
 
 test("keeps small informational text at AA contrast", async () => {
