@@ -64,7 +64,9 @@ Code 2.1.153 or newer; without `COLUMNS`, output uses the default 96-cell cap.
 ## Uninstall
 
 The installed uninstaller restores the exact prior `statusLine` value when one
-was preserved.
+was preserved and its rollback metadata remains available. If that metadata is
+missing or incomplete, uninstall warns that the prior value cannot be
+reconstructed before removing the installed setting and project files.
 
 Windows:
 
@@ -120,7 +122,10 @@ environment; use a friendly machine alias when the generated name is opaque.
 
 Output is monochrome, icon-free, and one line by default. Width calculations
 account for wide CJK characters. At narrow widths the path is shortened in the
-middle, then the branch and host are progressively removed.
+middle, then the branch and host are progressively removed. Before rendering,
+both adapters replace Unicode control, format, surrogate, and line-separator
+characters with spaces so invisible direction overrides cannot falsify the
+displayed identity or create a second line.
 
 ## Configuration
 
@@ -244,6 +249,11 @@ workspace identity in coding-agent terminals.
   network filesystems.
 - Windows PowerShell avoids an extra runtime but has higher process startup cost
   than Python.
+- Claude Code compatibility bugs can prevent an otherwise valid custom status
+  line from appearing: [#79433](https://github.com/anthropics/claude-code/issues/79433)
+  tracks silent fallback to the default on some versions, and
+  [#76411](https://github.com/anthropics/claude-code/issues/76411) tracks missing
+  custom output in macOS fullscreen TUI mode.
 - The main Claude Code status line cannot currently be distributed as a plugin
   default, so version 0.1 uses a settings installer.
 - Agent/model/context, dirty state, and coordination signals are intentionally

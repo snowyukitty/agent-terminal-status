@@ -203,16 +203,65 @@ try {
         $env:ATS_SHOW_HOST = 'auto'
     }
 
-    Test-Case 'render replaces line-breaking control characters' {
-        $env:COLUMNS = '96'
+    Test-Case 'render replaces unsafe Unicode formatting characters' {
+        $env:COLUMNS = '512'
+        $env:ATS_MAX_WIDTH = '512'
+        $env:ATS_SHOW_BRANCH = 'always'
+        $env:ATS_SHOW_HOST = 'always'
+        $unsafeCharacters = @(
+            [string][char]0x0000,
+            [string][char]0x001B,
+            [string][char]0x0085,
+            [string][char]0x061C,
+            [string][char]0x200B,
+            [string][char]0x200F,
+            [string][char]0x2028,
+            [string][char]0x2029,
+            [string][char]0x202D,
+            [string][char]0x202E,
+            [string][char]0x2066,
+            [string][char]0x2069,
+            [string][char]0xFEFF,
+            ([string][char]0xDB40 + [char]0xDC7F),
+            [string][char]0xD800
+        )
+        $attack = $unsafeCharacters -join 'x'
+        $safeText = $unicodeName + '/e' + [char]0x0301 + '/' + [char]0x2764 + [char]0xFE0F
         $identity = [pscustomobject]@{
-            Cwd = "C:\work\repo`nsecret"
-            Path = "repo`npackages`tapi"
-            Branch = "feature`ridentity"
-            Machine = "build$([char]0x7F)box"
+            Cwd = "C:\work\repo\$attack"
+            Path = "repo/$safeText/$attack"
+            Branch = "feature/$attack"
+            Machine = "build-$attack"
         }
         $value = Format-AtsStatus $identity
-        Assert-True ($value -notmatch '[\x00-\x1F\x7F-\x9F]') 'Output retained a control character.'
+        foreach ($character in $unsafeCharacters) {
+            Assert-True (-not $value.Contains($character)) 'Output retained an unsafe formatting character.'
+        }
+        for ($index = 0; $index -lt $value.Length; $index++) {
+            $codeUnitLength = if (
+                [char]::IsHighSurrogate($value[$index]) -and
+                $index + 1 -lt $value.Length -and
+                [char]::IsLowSurrogate($value[$index + 1])
+            ) {
+                2
+            }
+            else {
+                1
+            }
+            $category = [Globalization.CharUnicodeInfo]::GetUnicodeCategory($value, $index)
+            $isUnsafe = $category -eq [Globalization.UnicodeCategory]::Control -or
+                $category -eq [Globalization.UnicodeCategory]::Format -or
+                $category -eq [Globalization.UnicodeCategory]::Surrogate -or
+                $category -eq [Globalization.UnicodeCategory]::LineSeparator -or
+                $category -eq [Globalization.UnicodeCategory]::ParagraphSeparator
+            Assert-True (-not $isUnsafe) "Output retained unsafe category $category."
+            $index += $codeUnitLength - 1
+        }
+        Assert-Equal 1 @($value -split '[\r\n\u0085\u2028\u2029]').Count 'Output broke the one-line contract.'
+        Assert-True ($value.Contains($safeText)) 'Sanitization removed safe Unicode text.'
+        Remove-Item Env:ATS_MAX_WIDTH -ErrorAction SilentlyContinue
+        $env:ATS_SHOW_BRANCH = 'auto'
+        $env:ATS_SHOW_HOST = 'auto'
     }
 
     Test-Case 'PowerShell command emits UTF-8 identity' {
@@ -333,6 +382,73 @@ try {
                     throw "Refusing to clean unexpected test path: $resolvedTemporary"
                 }
                 Remove-Item -LiteralPath $resolvedTemporary -Recurse -Force
+            }
+        }
+    }
+
+    Test-Case 'uninstall warns when rollback state is unknown' {
+        $encoding = New-Object System.Text.UTF8Encoding($false)
+        foreach ($scenario in @(
+            'deleted',
+            'empty',
+            'invalid-json',
+            'missing-presence',
+            'missing-value',
+            'wrong-presence-type'
+        )) {
+            $temporaryRoot = Join-Path ([IO.Path]::GetTempPath()) ('ats-missing-state-' + $scenario + '-' + [Guid]::NewGuid().ToString('N'))
+            $config = Join-Path $temporaryRoot 'claude config'
+            try {
+                New-Item -ItemType Directory -Path $config -Force | Out-Null
+                $settingsPath = Join-Path $config 'settings.json'
+                $settings = [ordered]@{
+                    theme = 'dark'
+                    statusLine = [ordered]@{ type = 'command'; command = 'old-status'; padding = 3 }
+                }
+                [IO.File]::WriteAllText($settingsPath, ($settings | ConvertTo-Json -Depth 10), $encoding)
+                & (Join-Path $root 'scripts\install.ps1') -ConfigDir $config -Force | Out-Null
+
+                $installDir = Join-Path $config 'agent-terminal-status'
+                $statePath = Join-Path $installDir 'install-state.json'
+                if ($scenario -eq 'deleted') {
+                    Remove-Item -LiteralPath $statePath -Force
+                }
+                elseif ($scenario -eq 'empty') {
+                    [IO.File]::WriteAllText($statePath, '', $encoding)
+                }
+                elseif ($scenario -eq 'invalid-json') {
+                    [IO.File]::WriteAllText($statePath, '{ invalid', $encoding)
+                }
+                else {
+                    $state = [IO.File]::ReadAllText($statePath) | ConvertFrom-Json
+                    if ($scenario -eq 'missing-presence') {
+                        $state.PSObject.Properties.Remove('previousStatusLinePresent')
+                    }
+                    elseif ($scenario -eq 'missing-value') {
+                        $state.PSObject.Properties.Remove('previousStatusLine')
+                    }
+                    else {
+                        $state.previousStatusLinePresent = 'true'
+                    }
+                    [IO.File]::WriteAllText($statePath, ($state | ConvertTo-Json -Depth 10), $encoding)
+                }
+
+                $messages = & (Join-Path $installDir 'uninstall.ps1') 3>&1
+                $after = [IO.File]::ReadAllText($settingsPath) | ConvertFrom-Json
+                Assert-True ($null -eq $after.PSObject.Properties['statusLine']) "Scenario '$scenario' retained the installed statusLine."
+                Assert-Equal 'dark' $after.theme "Scenario '$scenario' changed an unrelated setting."
+                Assert-True (($messages -join "`n") -match 'cannot be restored') "Scenario '$scenario' did not warn about unavailable rollback."
+                Assert-True (-not (Test-Path -LiteralPath $installDir)) "Scenario '$scenario' did not remove project files."
+            }
+            finally {
+                if (Test-Path -LiteralPath $temporaryRoot) {
+                    $resolvedTemporary = [IO.Path]::GetFullPath($temporaryRoot)
+                    $tempBase = [IO.Path]::GetFullPath([IO.Path]::GetTempPath())
+                    if (-not $resolvedTemporary.StartsWith($tempBase, [StringComparison]::OrdinalIgnoreCase)) {
+                        throw "Refusing to clean unexpected test path: $resolvedTemporary"
+                    }
+                    Remove-Item -LiteralPath $temporaryRoot -Recurse -Force
+                }
             }
         }
     }

@@ -147,11 +147,7 @@ def uninstall(config_dir: Path) -> None:
         try:
             state = read_json(paths["state"])
         except RuntimeError:
-            print(
-                "Warning: the install state is unreadable; rollback metadata is "
-                "unavailable. Project files will still be removed.",
-                file=sys.stderr,
-            )
+            state = None
     if paths["settings"].exists():
         try:
             settings = read_json(paths["settings"])
@@ -163,13 +159,26 @@ def uninstall(config_dir: Path) -> None:
                 file=sys.stderr,
             )
     settings_changed = False
+    previous_present = (
+        state.get("previousStatusLinePresent") if isinstance(state, dict) else None
+    )
+    rollback_known = isinstance(previous_present, bool) and (
+        not previous_present or "previousStatusLine" in state
+    )
 
     if settings is not None:
         current = settings.get("statusLine")
         current_command = current.get("command", "") if isinstance(current, dict) else ""
         installed_command = str(state.get("installedCommand", "")) if state else ""
         if _is_our_command(str(current_command), installed_command):
-            if state and state.get("previousStatusLinePresent"):
+            if not rollback_known:
+                print(
+                    "Warning: the install state is unavailable or incomplete; "
+                    "a previously preserved statusLine cannot be restored. "
+                    "Removing the agent-terminal-status setting and project files.",
+                    file=sys.stderr,
+                )
+            if rollback_known and previous_present:
                 settings["statusLine"] = state.get("previousStatusLine")
             else:
                 settings.pop("statusLine", None)
@@ -196,7 +205,7 @@ def uninstall(config_dir: Path) -> None:
             )
 
     print("Uninstalled agent-terminal-status.")
-    if settings_changed and state and state.get("previousStatusLinePresent"):
+    if settings_changed and rollback_known and previous_present:
         print("Restored the previous Claude Code statusLine.")
     elif settings_changed:
         print("Removed the agent-terminal-status setting from Claude Code.")

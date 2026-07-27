@@ -8,6 +8,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+import unicodedata
 from contextlib import redirect_stderr
 from pathlib import Path
 
@@ -206,16 +207,51 @@ class StatusLineTests(unittest.TestCase):
                             rendered = statusline.render(identity, environment)
                             self.assertLessEqual(statusline.display_width(rendered), width)
 
-    def test_render_replaces_line_breaking_control_characters(self) -> None:
+    def test_render_replaces_unsafe_unicode_formatting_characters(self) -> None:
+        unsafe_characters = {
+            "nul": "\x00",
+            "escape": "\x1b",
+            "next-line": "\x85",
+            "arabic-letter-mark": "\u061c",
+            "zero-width-space": "\u200b",
+            "right-to-left-mark": "\u200f",
+            "line-separator": "\u2028",
+            "paragraph-separator": "\u2029",
+            "left-to-right-override": "\u202d",
+            "right-to-left-override": "\u202e",
+            "left-to-right-isolate": "\u2066",
+            "pop-directional-isolate": "\u2069",
+            "byte-order-mark": "\ufeff",
+            "supplementary-tag": "\U000e007f",
+            "lone-surrogate": "\ud800",
+        }
+        attack = "x".join(unsafe_characters.values())
         identity = statusline.StatusIdentity(
-            "/work/repo\nsecret",
-            "repo\npackages\tapi",
-            "feature\ridentity",
-            "build\x7fbox",
+            f"/work/repo/{attack}",
+            f"repo/專案/e\u0301/❤️/{attack}",
+            f"feature/{attack}",
+            f"build-{attack}",
         )
-        rendered = statusline.render(identity, self.base_env())
-        self.assertNotRegex(rendered, r"[\x00-\x1f\x7f-\x9f]")
+        rendered = statusline.render(
+            identity,
+            self.base_env(
+                COLUMNS="512",
+                ATS_MAX_WIDTH="512",
+                ATS_SHOW_BRANCH="always",
+                ATS_SHOW_HOST="always",
+            ),
+        )
+        for name, character in unsafe_characters.items():
+            with self.subTest(character=name):
+                self.assertNotIn(character, rendered)
+        self.assertTrue(
+            all(
+                unicodedata.category(character) not in {"Cc", "Cf", "Cs", "Zl", "Zp"}
+                for character in rendered
+            )
+        )
         self.assertEqual(len(rendered.splitlines()), 1)
+        self.assertIn("專案/e\u0301/❤️", rendered)
 
     def test_missing_git_is_a_clean_fallback(self) -> None:
         environment = self.base_env(PATH="")
@@ -355,6 +391,57 @@ class InstallerTests(unittest.TestCase):
         restored = self.read_settings()
         self.assertEqual(restored["statusLine"], previous)
         self.assertTrue(restored["verbose"])
+
+    def test_uninstall_warns_when_rollback_state_is_unknown(self) -> None:
+        previous = {"type": "command", "command": "old-status", "padding": 3}
+
+        for scenario in (
+            "deleted",
+            "empty",
+            "invalid-json",
+            "missing-presence",
+            "missing-value",
+            "wrong-presence-type",
+        ):
+            with self.subTest(scenario=scenario):
+                config = Path(self.temporary.name) / scenario
+                config.mkdir()
+                settings_path = config / "settings.json"
+                settings_path.write_text(
+                    json.dumps(
+                        {"statusLine": previous, "theme": "dark"},
+                        ensure_ascii=False,
+                    ),
+                    encoding="utf-8",
+                )
+                manager.install(config, force=True)
+                state_path = config / "agent-terminal-status" / "install-state.json"
+
+                if scenario == "deleted":
+                    state_path.unlink()
+                elif scenario == "empty":
+                    state_path.write_text("", encoding="utf-8")
+                elif scenario == "invalid-json":
+                    state_path.write_text("{ invalid", encoding="utf-8")
+                else:
+                    state = json.loads(state_path.read_text(encoding="utf-8"))
+                    if scenario == "missing-presence":
+                        state.pop("previousStatusLinePresent")
+                    elif scenario == "missing-value":
+                        state.pop("previousStatusLine")
+                    else:
+                        state["previousStatusLinePresent"] = "true"
+                    state_path.write_text(json.dumps(state), encoding="utf-8")
+
+                errors = io.StringIO()
+                with redirect_stderr(errors):
+                    manager.uninstall(config)
+
+                after = json.loads(settings_path.read_text(encoding="utf-8"))
+                self.assertNotIn("statusLine", after)
+                self.assertEqual(after["theme"], "dark")
+                self.assertIn("cannot be restored", errors.getvalue())
+                self.assertFalse((config / "agent-terminal-status").exists())
 
     def test_uninstall_does_not_overwrite_later_user_change(self) -> None:
         self.write_settings({"theme": "dark"})

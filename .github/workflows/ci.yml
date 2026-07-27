@@ -32,6 +32,16 @@ jobs:
           "$config_dir/agent-terminal-status/uninstall.sh"
           test ! -d "$config_dir/agent-terminal-status"
 
+          missing_state_dir="$RUNNER_TEMP/ats-claude-config-missing-state"
+          mkdir -p "$missing_state_dir"
+          printf '%s\n' '{"statusLine":{"type":"command","command":"old-status"},"theme":"dark"}' > "$missing_state_dir/settings.json"
+          sh scripts/install.sh --config-dir "$missing_state_dir" --force
+          rm "$missing_state_dir/agent-terminal-status/install-state.json"
+          uninstall_output=$("$missing_state_dir/agent-terminal-status/uninstall.sh" 2>&1)
+          printf '%s\n' "$uninstall_output" | grep 'cannot be restored'
+          test ! -d "$missing_state_dir/agent-terminal-status"
+          python -c 'import json, sys; assert json.load(open(sys.argv[1], encoding="utf-8")) == {"theme": "dark"}' "$missing_state_dir/settings.json"
+
   powershell:
     name: PowerShell · Windows
     runs-on: windows-latest

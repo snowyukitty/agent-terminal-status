@@ -35,13 +35,21 @@ The default renderer is path-first, monochrome, and one line. It caps output at
 96 terminal cells, shortens the path in the middle, and drops an automatic
 branch before an automatic host when width is scarce.
 
+Before measuring or rendering, both adapters replace Unicode control (`Cc`),
+format (`Cf`), surrogate (`Cs`), line-separator (`Zl`), and
+paragraph-separator (`Zp`) characters with spaces. Workspace identity is a
+safety signal, so preventing invisible direction overrides and hidden line
+breaks takes precedence over preserving those formatting code points.
+
 Git is optional. Calls use `git -C`, disable optional locks, avoid worktree
 state scans, and have a 150 ms default timeout. Failure omits branch but never
 the current directory.
 
 Installation copies the adapter into Claude's user configuration and updates
 settings atomically. Existing status lines require explicit force and are
-retained as rollback state.
+retained as rollback state. Uninstall validates that state before using it; if
+metadata is unavailable or incomplete, it warns that the previous value cannot
+be reconstructed rather than silently implying a successful rollback.
 
 ## Why this is the smallest useful shape
 

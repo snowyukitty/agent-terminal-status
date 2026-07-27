@@ -407,7 +407,34 @@ function Compress-AtsMiddle {
 function ConvertTo-AtsDisplayText {
     param([AllowNull()] $Value)
     if ($null -eq $Value) { return '' }
-    return ([string]$Value) -replace '[\x00-\x1F\x7F-\x9F]', ' '
+    $text = [string]$Value
+    $builder = New-Object System.Text.StringBuilder($text.Length)
+    for ($index = 0; $index -lt $text.Length; $index++) {
+        $codeUnitLength = if (
+            [char]::IsHighSurrogate($text[$index]) -and
+            $index + 1 -lt $text.Length -and
+            [char]::IsLowSurrogate($text[$index + 1])
+        ) {
+            2
+        }
+        else {
+            1
+        }
+        $category = [Globalization.CharUnicodeInfo]::GetUnicodeCategory($text, $index)
+        $unsafe = $category -eq [Globalization.UnicodeCategory]::Control -or
+            $category -eq [Globalization.UnicodeCategory]::Format -or
+            $category -eq [Globalization.UnicodeCategory]::Surrogate -or
+            $category -eq [Globalization.UnicodeCategory]::LineSeparator -or
+            $category -eq [Globalization.UnicodeCategory]::ParagraphSeparator
+        if ($unsafe) {
+            [void]$builder.Append(' ')
+        }
+        else {
+            [void]$builder.Append($text.Substring($index, $codeUnitLength))
+        }
+        $index += $codeUnitLength - 1
+    }
+    return $builder.ToString()
 }
 
 function Format-AtsStatus {

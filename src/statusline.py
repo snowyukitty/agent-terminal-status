@@ -257,8 +257,13 @@ def display_width(value: str) -> int:
 
 
 def _safe_display_text(value: object) -> str:
-    """Replace control characters that could break the one-line contract."""
-    return re.sub(r"[\x00-\x1f\x7f-\x9f]", " ", str(value))
+    """Replace controls, format marks, and Unicode line separators."""
+    return "".join(
+        " "
+        if unicodedata.category(character) in {"Cc", "Cf", "Cs", "Zl", "Zp"}
+        else character
+        for character in str(value)
+    )
 
 
 def _take_prefix_cells(value: str, budget: int) -> str:

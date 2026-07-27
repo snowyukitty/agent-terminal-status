@@ -62,8 +62,7 @@ function Read-Json {
 }
 
 if ([string]::IsNullOrWhiteSpace($ConfigDir)) {
-    if ((Split-Path -Leaf $PSScriptRoot) -eq 'agent-terminal-status' -and
-        (Test-Path -LiteralPath (Join-Path $PSScriptRoot 'install-state.json'))) {
+    if ((Split-Path -Leaf $PSScriptRoot) -eq 'agent-terminal-status') {
         $ConfigDir = Split-Path -Parent $PSScriptRoot
     }
     else {
@@ -80,7 +79,7 @@ try {
     $state = Read-Json $statePath
 }
 catch {
-    Write-Warning "The install state is unreadable; rollback metadata is unavailable. Project files will still be removed."
+    $state = $null
 }
 try {
     $settings = Read-Json $settingsPath
@@ -89,6 +88,24 @@ catch {
     Write-Warning "Claude settings are unreadable and were left untouched. Project files will still be removed; repair '$settingsPath' and remove its statusLine entry if needed."
 }
 $settingsChanged = $false
+$previousPresentProperty = if ($null -ne $state) {
+    $state.PSObject.Properties['previousStatusLinePresent']
+}
+else {
+    $null
+}
+$previousValueProperty = if ($null -ne $state) {
+    $state.PSObject.Properties['previousStatusLine']
+}
+else {
+    $null
+}
+$rollbackKnown = $null -ne $previousPresentProperty -and
+    $previousPresentProperty.Value -is [bool] -and (
+        -not [bool]$previousPresentProperty.Value -or
+        $null -ne $previousValueProperty
+    )
+$previousStatusLinePresent = $rollbackKnown -and [bool]$previousPresentProperty.Value
 
 if ($null -ne $settings) {
     $statusProperty = $settings.PSObject.Properties['statusLine']
@@ -105,7 +122,10 @@ if ($null -ne $settings) {
     )
 
     if ($isOurs) {
-        if ($null -ne $state -and [bool]$state.previousStatusLinePresent) {
+        if (-not $rollbackKnown) {
+            Write-Warning 'The install state is unavailable or incomplete; a previously preserved statusLine cannot be restored. Removing the agent-terminal-status setting and project files.'
+        }
+        if ($previousStatusLinePresent) {
             $statusProperty.Value = $state.previousStatusLine
         }
         else {
@@ -143,7 +163,7 @@ if (Test-Path -LiteralPath $installDir) {
 }
 
 Write-Output 'Uninstalled agent-terminal-status.'
-if ($settingsChanged -and $null -ne $state -and [bool]$state.previousStatusLinePresent) {
+if ($settingsChanged -and $previousStatusLinePresent) {
     Write-Output 'Restored the previous Claude Code statusLine.'
 }
 elseif ($settingsChanged) {
