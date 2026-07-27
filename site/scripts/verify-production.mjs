@@ -56,7 +56,11 @@ assert.match(css, /\/font-assets\/GeistMono-Variable\.woff2/);
 assert.doesNotMatch(css, /url\(["']?\/fonts\//);
 
 const scriptPaths = [
-  ...new Set([...html.matchAll(/src="([^"]+\.js)"/g)].map((match) => match[1])),
+  ...new Set(
+    [...html.matchAll(/\b(?:href|src)="([^"]+\.js)"/g)].map(
+      (match) => match[1],
+    ),
+  ),
 ];
 assert.ok(scriptPaths.length > 0, "The deployed page did not reference scripts.");
 for (const scriptPath of scriptPaths) {
@@ -80,7 +84,7 @@ for (const filename of [
   assert.match(response.headers.get("content-type") ?? "", /^font\/woff2\b/i);
   assert.equal(response.headers.get("cache-control"), immutable);
   assert.ok(
-    Number(response.headers.get("content-length")) > 60_000,
+    (await response.arrayBuffer()).byteLength > 60_000,
     `${pathname} returned an implausibly small font`,
   );
 }
@@ -101,8 +105,8 @@ for (const [pathname, contentType] of [
   assertSecurityHeaders(response, pathname);
   assert.match(response.headers.get("content-type") ?? "", contentType);
   assert.ok(
-    Number(response.headers.get("content-length")) > 0,
-    `${pathname} has no content length`,
+    (await response.arrayBuffer()).byteLength > 0,
+    `${pathname} returned an empty body`,
   );
 }
 
