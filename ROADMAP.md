@@ -16,7 +16,7 @@ Implemented:
 - Windows PowerShell 5.1 adapter with no extra runtime;
 - Python adapter for macOS, Linux, and other Python environments;
 - reversible, idempotent user-settings installers;
-- deterministic demo, benchmark, and cross-platform CI.
+- deterministic demo, benchmark, and cross-platform CI;
 - width-invariant rendering across every visibility mode;
 - portable, privacy-scanned public website build and demo.
 
@@ -25,9 +25,9 @@ Before calling 0.1 a public release:
 - use it across several real Claude Code sessions for at least a week;
 - capture a real in-product screenshot in Windows and one POSIX terminal;
 - validate SSH, WSL, and container host aliases on actual remote sessions;
-- collect feedback on whether hostname belongs in `auto` or should be opt-in.
-- after the final website deployment, manually dispatch `Production smoke` and
-  record a successful run for the deployed commit.
+- collect feedback on whether hostname belongs in `auto` or should be opt-in;
+- after the final website deployment, confirm artifact provenance separately,
+  then manually dispatch `Production smoke` and record a healthy live-edge run.
 
 ## Next — validate development identity
 

@@ -154,10 +154,11 @@ const backingStylesheetPath = stylesheetPath.replace(
   /^\/delivery\/assets\//,
   "/assets/",
 );
-const backingResponse = await fetch(url(backingStylesheetPath));
+const backingProbePath = probe(backingStylesheetPath);
+const backingResponse = await fetch(url(backingProbePath));
 assert.ok(
   backingResponse.status === 200 || backingResponse.status === 404,
-  `${backingStylesheetPath} returned ${backingResponse.status}`,
+  `${backingProbePath} returned ${backingResponse.status}`,
 );
 
 console.log(

@@ -45,6 +45,7 @@ cannot masquerade as the current deployment.
 - `worker/index.ts` — embedded static delivery, generated-asset routing, and
   one response security policy
 - `scripts/verify-production.mjs` — read-only deployment smoke test
+- `tests/production-verifier.test.mjs` — request-level probe freshness contract
 - `tests/rendered-html.test.mjs` — production-render checks
 
 The two Geist font files come from the official `geist` 1.7.2 package and are
@@ -83,8 +84,12 @@ Production verification is separate from push CI because a push can finish
 before a Sites deployment. The `Production smoke` GitHub Actions workflow runs
 on demand after deployment and on a daily schedule, avoiding that race while
 keeping the live edge behavior observable. After every Sites deployment,
-manually dispatch that workflow and confirm it succeeds for the deployed
-commit; the daily run is a backstop, not deployment confirmation.
+manually dispatch that workflow. A green run confirms that the live edge
+currently satisfies the delivery contract; it does not identify which source
+revision produced that deployment. Confirm revision provenance separately from
+the Sites saved-version source SHA. Byte-level artifact comparison establishes
+content equivalence, not the provider's recorded revision. The daily run is a
+health backstop, not deployment confirmation.
 
 HSTS remains a hosting-layer decision. The project does not install a
 long-lived browser transport pin on a provider-owned subdomain; reconsider it
