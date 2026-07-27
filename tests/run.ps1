@@ -332,7 +332,9 @@ try {
     Test-Case 'Git branch detached HEAD and linked worktree' {
         $temporaryRoot = Join-Path ([IO.Path]::GetTempPath()) ('ats-git-' + [Guid]::NewGuid().ToString('N'))
         $repo = Join-Path $temporaryRoot 'repo with spaces'
+        $savedGitTimeout = $env:ATS_GIT_TIMEOUT_MS
         try {
+            $env:ATS_GIT_TIMEOUT_MS = '2000'
             New-Item -ItemType Directory -Path $repo -Force | Out-Null
             Invoke-Git $repo init
             Invoke-Git $repo config user.email test@example.invalid
@@ -360,6 +362,7 @@ try {
             Assert-Equal ((Resolve-Path $worktree).Path -replace '\\', '/') (ConvertTo-AtsSlashPath $worktreeIdentity.Root) 'Worktree root mismatch.'
         }
         finally {
+            $env:ATS_GIT_TIMEOUT_MS = $savedGitTimeout
             if (Test-Path -LiteralPath $temporaryRoot) {
                 $resolvedTemporary = [IO.Path]::GetFullPath($temporaryRoot)
                 $tempBase = [IO.Path]::GetFullPath([IO.Path]::GetTempPath())

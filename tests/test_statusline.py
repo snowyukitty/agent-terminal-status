@@ -288,6 +288,7 @@ class StatusLineTests(unittest.TestCase):
         self.assertIsNone(statusline.collect_git("/work/repo", environment))
 
     def test_git_repo_branch_detached_head_and_worktree(self) -> None:
+        git_env = self.base_env(ATS_GIT_TIMEOUT_MS="2000")
         with tempfile.TemporaryDirectory(prefix="ats git 日本語 ") as temporary:
             repo = Path(temporary) / "repo with spaces"
             repo.mkdir()
@@ -301,14 +302,14 @@ class StatusLineTests(unittest.TestCase):
             nested = repo / "packages" / "日本語"
             nested.mkdir(parents=True)
 
-            identity = statusline.collect_git(str(nested), self.base_env())
+            identity = statusline.collect_git(str(nested), git_env)
             self.assertIsNotNone(identity)
             assert identity is not None
             self.assertEqual(Path(identity.root).resolve(), repo.resolve())
             self.assertEqual(identity.branch, "main")
 
             self.git(repo, "checkout", "--detach", "HEAD")
-            detached = statusline.collect_git(str(nested), self.base_env())
+            detached = statusline.collect_git(str(nested), git_env)
             self.assertIsNotNone(detached)
             assert detached is not None
             self.assertRegex(detached.branch or "", r"^detached@[0-9a-f]{7}$")
@@ -316,7 +317,7 @@ class StatusLineTests(unittest.TestCase):
             self.git(repo, "switch", "main")
             worktree = Path(temporary) / "linked worktree"
             self.git(repo, "worktree", "add", "-b", "feature/worktree", str(worktree))
-            worktree_identity = statusline.collect_git(str(worktree), self.base_env())
+            worktree_identity = statusline.collect_git(str(worktree), git_env)
             self.assertIsNotNone(worktree_identity)
             assert worktree_identity is not None
             self.assertEqual(Path(worktree_identity.root).resolve(), worktree.resolve())
