@@ -1,9 +1,11 @@
 import assert from "node:assert/strict";
+import { randomUUID } from "node:crypto";
 
 const defaultOrigin =
   "https://agent-terminal-status.gldtestuser.chatgpt.site";
 const origin = new URL(process.argv[2] ?? process.env.SITE_ORIGIN ?? defaultOrigin);
 const immutable = "public, max-age=31536000, immutable";
+const productionProbe = randomUUID();
 const securityHeaders = {
   "content-security-policy":
     "frame-ancestors 'none'; object-src 'none'; base-uri 'self'",
@@ -14,6 +16,12 @@ const securityHeaders = {
 
 function url(pathname) {
   return new URL(pathname, origin);
+}
+
+function probe(pathname) {
+  const target = url(pathname);
+  target.searchParams.set("production-smoke", productionProbe);
+  return `${target.pathname}${target.search}`;
 }
 
 function assertSecurityHeaders(response, pathname) {
@@ -78,7 +86,7 @@ for (const filename of [
   "Geist-Variable.woff2",
   "GeistMono-Variable.woff2",
 ]) {
-  const pathname = `/font-assets/${filename}?production-smoke=1`;
+  const pathname = probe(`/font-assets/${filename}`);
   const response = await fetchOk(pathname);
   assertSecurityHeaders(response, pathname);
   assert.match(response.headers.get("content-type") ?? "", /^font\/woff2\b/i);
@@ -93,7 +101,7 @@ for (const filename of [
   );
 }
 
-const fontLicensePath = "/font-assets/LICENSE-Geist.txt";
+const fontLicensePath = probe("/font-assets/LICENSE-Geist.txt");
 const fontLicense = await fetchOk(fontLicensePath);
 assertSecurityHeaders(fontLicense, fontLicensePath);
 assert.match(
@@ -114,8 +122,9 @@ for (const [pathname, contentType] of [
   ["/robots.txt", /^text\/plain\b/i],
   ["/sitemap.xml", /^application\/xml\b/i],
 ]) {
-  const response = await fetchOk(pathname);
-  assertSecurityHeaders(response, pathname);
+  const probePath = probe(pathname);
+  const response = await fetchOk(probePath);
+  assertSecurityHeaders(response, probePath);
   assert.match(response.headers.get("content-type") ?? "", contentType);
   assert.ok(
     (await response.arrayBuffer()).byteLength > 0,
@@ -132,9 +141,10 @@ for (const pathname of [
   "/_headers",
   "/.assetsignore",
 ]) {
-  const response = await fetch(url(pathname));
-  assert.equal(response.status, 404, `${pathname} returned ${response.status}`);
-  assertSecurityHeaders(response, pathname);
+  const probePath = probe(pathname);
+  const response = await fetch(url(probePath));
+  assert.equal(response.status, 404, `${probePath} returned ${response.status}`);
+  assertSecurityHeaders(response, probePath);
   assert.notEqual(response.headers.get("cache-control"), immutable);
 }
 

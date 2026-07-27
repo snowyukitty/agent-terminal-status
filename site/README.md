@@ -32,6 +32,8 @@ public assets, font routes, cache policy, fixed-origin metadata, and the
 blocked legacy font and build-internal paths. It also reports whether the
 hosting provider exposes the generated asset store directly, without treating
 that implementation path as the website's delivery interface.
+Each mutable-path probe uses a unique query token so an earlier CDN response
+cannot masquerade as the current deployment.
 
 ## Structure
 
