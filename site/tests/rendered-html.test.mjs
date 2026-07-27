@@ -174,6 +174,52 @@ test("applies security headers and immutable font caching", async () => {
     missingFont.headers.get("cache-control"),
     "public, max-age=31536000, immutable",
   );
+
+  let directFontReachedAssets = false;
+  const directFont = await render({
+    pathname: "/fonts/Geist-Variable.woff2",
+    assetResponse: () => {
+      directFontReachedAssets = true;
+      return new Response("unexpected");
+    },
+  });
+  assert.equal(directFont.status, 404);
+  assert.equal(directFontReachedAssets, false);
+  assert.equal(directFont.headers.get("x-content-type-options"), "nosniff");
+
+  const stylesheet = await render({
+    pathname: "/assets/index-contenthash.css",
+    assetResponse: (request) => {
+      assert.equal(
+        new URL(request.url).pathname,
+        "/assets/index-contenthash.css",
+      );
+      return new Response("body {}", {
+        headers: { "content-type": "text/css" },
+      });
+    },
+  });
+  assert.equal(stylesheet.status, 200);
+  assert.equal(stylesheet.headers.get("content-type"), "text/css");
+  assert.equal(
+    stylesheet.headers.get("cache-control"),
+    "public, max-age=31536000, immutable",
+  );
+  assert.equal(stylesheet.headers.get("x-content-type-options"), "nosniff");
+
+  const publicAsset = await render({
+    pathname: "/favicon.svg",
+    assetResponse: () =>
+      new Response("<svg></svg>", {
+        headers: { "content-type": "image/svg+xml" },
+      }),
+  });
+  assert.equal(publicAsset.status, 200);
+  assert.equal(publicAsset.headers.get("x-frame-options"), "DENY");
+  assert.notEqual(
+    publicAsset.headers.get("cache-control"),
+    "public, max-age=31536000, immutable",
+  );
 });
 
 test("keeps small informational text at AA contrast", async () => {
@@ -194,15 +240,17 @@ test("keeps small informational text at AA contrast", async () => {
   );
 });
 
-test("build output is portable and self-hosts its fonts", async () => {
+test("build output is portable and routes assets through the Worker", async () => {
   const dist = fileURLToPath(new URL("../dist", import.meta.url));
   const artifacts = await textBuildArtifacts(dist);
-  const [contents, layout, packageJson] = await Promise.all([
+  const [contents, layout, packageJson, wranglerConfig] = await Promise.all([
     Promise.all(artifacts.map((path) => readFile(path, "utf8"))),
     readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
     readFile(new URL("../package.json", import.meta.url), "utf8"),
+    readFile(new URL("../dist/server/wrangler.json", import.meta.url), "utf8"),
   ]);
   const bundle = contents.join("\n");
+  const wrangler = JSON.parse(wranglerConfig);
   const styles = (
     await Promise.all(
       artifacts
@@ -223,6 +271,8 @@ test("build output is portable and self-hosts its fonts", async () => {
   assert.match(styles, /\/font-assets\/Geist-Variable\.woff2/);
   assert.match(styles, /\/font-assets\/GeistMono-Variable\.woff2/);
   assert.doesNotMatch(styles, /url\(["']?\/fonts\//);
+  assert.equal(wrangler.assets?.binding, "ASSETS");
+  assert.equal(wrangler.assets?.run_worker_first, true);
 
   await Promise.all([
     access(new URL("../dist/client/fonts/Geist-Variable.woff2", import.meta.url)),
