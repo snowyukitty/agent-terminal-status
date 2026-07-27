@@ -34,6 +34,12 @@ Do not post a low-signal comment merely to reset stale state. Recheck the thread
 and labels immediately before posting; if #70132 has closed, evaluate #74344
 and the then-current duplicate landscape as the narrower fallback.
 
+#74344 was opened on 2026-07-05. If the same roughly 29-day inactivity window
+that labeled #70132 applies, it could become stale around 2026-08-03. This is an
+estimate, not a posting deadline: stale comments have frequently failed to
+prevent closure, so evidence quality remains more important than keeping a
+particular thread alive.
+
 Do not submit the draft below until real-use evidence is available.
 
 ## Problem

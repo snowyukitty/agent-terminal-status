@@ -39,11 +39,22 @@ Before measuring or rendering, both adapters replace Unicode control (`Cc`),
 format (`Cf`), surrogate (`Cs`), line-separator (`Zl`), and
 paragraph-separator (`Zp`) characters with spaces. Workspace identity is a
 safety signal, so preventing invisible direction overrides and hidden line
-breaks takes precedence over preserving those formatting code points.
+breaks takes precedence over preserving those formatting code points. This
+includes ZWJ and ZWNJ: emoji families and scripts that use joining controls can
+lose preferred shaping. The adapters intentionally keep the category-level
+rule instead of weakening it into a character blacklist.
+
+Malformed UTF-8 can be normalized at different layers: Python may receive a
+lone surrogate that the sanitizer replaces with a space, while .NET commonly
+decodes the same invalid sequence as U+FFFD first. Exact glyph parity is not a
+security invariant; neither adapter may emit a surrogate, control, format
+mark, or extra line.
 
 Git is optional. Calls use `git -C`, disable optional locks, avoid worktree
 state scans, and have a 150 ms default timeout. Failure omits branch but never
-the current directory.
+the current directory. Home-directory discovery is optional too: a missing
+profile cannot suppress a valid workspace path, and the emergency path emits a
+nonblank `unknown-directory` identity when neither cwd nor home is available.
 
 Installation copies the adapter into Claude's user configuration and updates
 settings atomically. Existing status lines require explicit force and are

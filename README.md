@@ -125,7 +125,10 @@ account for wide CJK characters. At narrow widths the path is shortened in the
 middle, then the branch and host are progressively removed. Before rendering,
 both adapters replace Unicode control, format, surrogate, and line-separator
 characters with spaces so invisible direction overrides cannot falsify the
-displayed identity or create a second line.
+displayed identity or create a second line. This deliberately includes format
+characters such as ZWJ and ZWNJ: a complex emoji or connected script may lose
+its preferred shaping, but the identity row remains visible, directional, and
+measurable.
 
 ## Configuration
 

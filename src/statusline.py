@@ -34,11 +34,18 @@ class StatusIdentity:
     machine: str
 
 
+def _fallback_home() -> str:
+    try:
+        return str(Path.home())
+    except (OSError, RuntimeError):
+        return ""
+
+
 def _safe_cwd() -> str:
     try:
         return os.getcwd()
     except OSError:
-        return str(Path.home())
+        return _fallback_home() or "unknown-directory"
 
 
 def parse_payload(payload: str, fallback_cwd: Optional[str] = None) -> tuple[dict, str]:
@@ -181,8 +188,8 @@ def collect_git(cwd: str, env: Optional[Mapping[str, str]] = None) -> Optional[G
 def _home_path(env: Mapping[str, str], path: str = "") -> str:
     normalized = _slash_path(path)
     if bool(re.match(r"^[A-Za-z]:/", normalized)) or normalized.startswith("//"):
-        return env.get("USERPROFILE") or env.get("HOME") or str(Path.home())
-    return env.get("HOME") or env.get("USERPROFILE") or str(Path.home())
+        return env.get("USERPROFILE") or env.get("HOME") or _fallback_home()
+    return env.get("HOME") or env.get("USERPROFILE") or _fallback_home()
 
 
 def display_path(
@@ -264,6 +271,16 @@ def _safe_display_text(value: object) -> str:
         else character
         for character in str(value)
     )
+
+
+def _safe_hostname(env: Mapping[str, str]) -> str:
+    configured = env.get("ATS_MACHINE") or env.get("COMPUTERNAME") or env.get("HOSTNAME")
+    if configured:
+        return configured
+    try:
+        return socket.gethostname() or "unknown"
+    except OSError:
+        return "unknown"
 
 
 def _take_prefix_cells(value: str, budget: int) -> str:
@@ -387,14 +404,7 @@ def build_identity(
     git_identity = collect_git(cwd, environment) if git is None else git
     path_style = environment.get("ATS_PATH_STYLE", "context")
     path = display_path(cwd, git_identity, path_style, environment)
-    host = (
-        machine
-        or environment.get("ATS_MACHINE")
-        or environment.get("COMPUTERNAME")
-        or environment.get("HOSTNAME")
-        or socket.gethostname()
-        or "unknown"
-    )
+    host = machine or _safe_hostname(environment)
     return StatusIdentity(cwd=cwd, path=path, branch=git_identity.branch if git_identity else None, machine=host)
 
 
@@ -410,8 +420,12 @@ def main() -> int:
     except Exception:
         # A status line should degrade to useful identity, never a blank row.
         fallback = _safe_cwd()
-        machine = os.environ.get("ATS_MACHINE") or os.environ.get("COMPUTERNAME") or socket.gethostname()
-        identity = StatusIdentity(fallback, display_path(fallback, None), None, machine)
+        identity = StatusIdentity(
+            fallback,
+            _slash_path(fallback) or "unknown-directory",
+            None,
+            _safe_hostname(os.environ),
+        )
         print(render(identity))
     return 0
 

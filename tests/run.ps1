@@ -98,6 +98,34 @@ try {
         }
     }
 
+    Test-Case 'missing home still emits workspace identity' {
+        $savedHome = $env:HOME
+        $savedProfile = $env:USERPROFILE
+        $savedHomeDrive = $env:HOMEDRIVE
+        $savedHomePath = $env:HOMEPATH
+        try {
+            Remove-Item Env:HOME -ErrorAction SilentlyContinue
+            Remove-Item Env:USERPROFILE -ErrorAction SilentlyContinue
+            Remove-Item Env:HOMEDRIVE -ErrorAction SilentlyContinue
+            Remove-Item Env:HOMEPATH -ErrorAction SilentlyContinue
+            $identity = New-AtsIdentity `
+                -Json '{"workspace":{"current_dir":"C:\\work\\proj"}}' `
+                -Machine 'probe' `
+                -SkipGitCollection
+            $value = Format-AtsStatus $identity
+            Assert-Equal 'C:/work/proj' $identity.Path 'Missing home changed the workspace path.'
+            Assert-True (-not [string]::IsNullOrWhiteSpace($value)) 'Missing home produced a blank status row.'
+            Assert-True ($value.Contains('C:/work/proj')) 'Missing home hid the workspace identity.'
+            Assert-True ($value.Contains('probe')) 'Missing home hid the machine identity.'
+        }
+        finally {
+            if ($null -eq $savedHome) { Remove-Item Env:HOME -ErrorAction SilentlyContinue } else { $env:HOME = $savedHome }
+            if ($null -eq $savedProfile) { Remove-Item Env:USERPROFILE -ErrorAction SilentlyContinue } else { $env:USERPROFILE = $savedProfile }
+            if ($null -eq $savedHomeDrive) { Remove-Item Env:HOMEDRIVE -ErrorAction SilentlyContinue } else { $env:HOMEDRIVE = $savedHomeDrive }
+            if ($null -eq $savedHomePath) { Remove-Item Env:HOMEPATH -ErrorAction SilentlyContinue } else { $env:HOMEPATH = $savedHomePath }
+        }
+    }
+
     Test-Case 'wide render includes path branch and machine' {
         $env:ATS_MACHINE = 'build-box'
         $env:COLUMNS = '96'

@@ -9,8 +9,9 @@ import sys
 import tempfile
 import unittest
 import unicodedata
-from contextlib import redirect_stderr
+from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -91,6 +92,35 @@ class StatusLineTests(unittest.TestCase):
             env=self.base_env(),
         )
         self.assertEqual(value, "~/scratch/notes")
+
+    def test_unavailable_home_keeps_workspace_identity_and_emergency_output(self) -> None:
+        payload = '{"workspace":{"current_dir":"C:/work/proj"}}'
+        environment = {"ATS_MACHINE": "probe", "COLUMNS": "96", "PATH": ""}
+
+        with patch.object(
+            statusline.Path,
+            "home",
+            side_effect=RuntimeError("Could not determine home directory."),
+        ):
+            identity = statusline.build_identity(payload, environment)
+            self.assertEqual(identity.path, "C:/work/proj")
+            self.assertEqual(
+                statusline.render(identity, environment),
+                "C:/work/proj · probe",
+            )
+
+            output = io.StringIO()
+            with patch.dict(
+                os.environ, environment, clear=True
+            ), patch.object(
+                sys, "stdin", io.StringIO(payload)
+            ), redirect_stdout(output):
+                with patch.object(
+                    statusline, "build_identity", side_effect=RuntimeError
+                ), patch.object(statusline.os, "getcwd", side_effect=OSError):
+                    self.assertEqual(statusline.main(), 0)
+
+        self.assertEqual(output.getvalue().strip(), "unknown-directory · probe")
 
     def test_full_and_name_path_styles(self) -> None:
         git = statusline.GitIdentity("/home/alex/work/repo", "main")
