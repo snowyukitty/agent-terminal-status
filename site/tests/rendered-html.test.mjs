@@ -152,11 +152,13 @@ test("applies security headers and immutable font caching", async () => {
   assert.equal(page.headers.get("x-frame-options"), "DENY");
 
   const font = await render({
-    pathname: "/fonts/Geist-Variable.woff2",
-    assetResponse: () =>
-      new Response(new Uint8Array([0, 1, 2]), {
+    pathname: "/font-assets/Geist-Variable.woff2",
+    assetResponse: (request) => {
+      assert.equal(new URL(request.url).pathname, "/fonts/Geist-Variable.woff2");
+      return new Response(new Uint8Array([0, 1, 2]), {
         headers: { "content-type": "application/octet-stream" },
-      }),
+      });
+    },
   });
   assert.equal(font.status, 200);
   assert.equal(
@@ -166,38 +168,12 @@ test("applies security headers and immutable font caching", async () => {
   assert.equal(font.headers.get("content-type"), "font/woff2");
   assert.equal(font.headers.get("x-content-type-options"), "nosniff");
 
-  const missingFont = await render({ pathname: "/fonts/missing.woff2" });
+  const missingFont = await render({ pathname: "/font-assets/missing.woff2" });
   assert.equal(missingFont.status, 404);
   assert.notEqual(
     missingFont.headers.get("cache-control"),
     "public, max-age=31536000, immutable",
   );
-
-  const staticHeaders = await readFile(
-    new URL("../public/_headers", import.meta.url),
-    "utf8",
-  );
-  assert.match(staticHeaders, /^\/\*\s*$/m);
-  assert.match(staticHeaders, /X-Content-Type-Options:\s*nosniff/);
-  for (const filename of [
-    "Geist-Variable.woff2",
-    "GeistMono-Variable.woff2",
-  ]) {
-    assert.match(staticHeaders, new RegExp(`/fonts/${filename}`));
-  }
-  assert.equal(
-    (
-      staticHeaders.match(
-        /Cache-Control:\s*public, max-age=31536000, immutable/g,
-      ) ?? []
-    ).length,
-    2,
-  );
-  assert.equal(
-    (staticHeaders.match(/Content-Type:\s*font\/woff2/g) ?? []).length,
-    2,
-  );
-  await access(new URL("../dist/client/_headers", import.meta.url));
 });
 
 test("keeps small informational text at AA contrast", async () => {
@@ -227,6 +203,13 @@ test("build output is portable and self-hosts its fonts", async () => {
     readFile(new URL("../package.json", import.meta.url), "utf8"),
   ]);
   const bundle = contents.join("\n");
+  const styles = (
+    await Promise.all(
+      artifacts
+        .filter((path) => path.endsWith(".css"))
+        .map((path) => readFile(path, "utf8")),
+    )
+  ).join("\n");
 
   assert.match(
     JSON.parse(packageJson).scripts.build,
@@ -237,8 +220,9 @@ test("build output is portable and self-hosts its fonts", async () => {
     /file:\/\/|(?:^|[^A-Za-z0-9])[A-Za-z]:[\\/]|\/home\/runner\/work\//im,
   );
   assert.doesNotMatch(layout, /next\/font|fonts\.googleapis\.com/i);
-  assert.match(bundle, /\/fonts\/Geist-Variable\.woff2/);
-  assert.match(bundle, /\/fonts\/GeistMono-Variable\.woff2/);
+  assert.match(styles, /\/font-assets\/Geist-Variable\.woff2/);
+  assert.match(styles, /\/font-assets\/GeistMono-Variable\.woff2/);
+  assert.doesNotMatch(styles, /url\(["']?\/fonts\//);
 
   await Promise.all([
     access(new URL("../dist/client/fonts/Geist-Variable.woff2", import.meta.url)),

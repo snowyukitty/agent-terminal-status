@@ -1,6 +1,12 @@
 /** Cloudflare Worker entry point for the agent-terminal-status website. */
 import handler from "vinext/server/app-router-entry";
 
+type AssetsEnvironment = {
+  ASSETS?: {
+    fetch(request: Request): Promise<Response>;
+  };
+};
+
 const securityHeaders = {
   "Content-Security-Policy":
     "frame-ancestors 'none'; object-src 'none'; base-uri 'self'",
@@ -9,10 +15,28 @@ const securityHeaders = {
   "X-Frame-Options": "DENY",
 };
 
+const fontAssets = new Map([
+  ["/font-assets/Geist-Variable.woff2", "/fonts/Geist-Variable.woff2"],
+  ["/font-assets/GeistMono-Variable.woff2", "/fonts/GeistMono-Variable.woff2"],
+]);
+
 export default {
-  async fetch(...arguments_: Parameters<typeof handler.fetch>) {
-    const [request] = arguments_;
-    const response = await handler.fetch(...arguments_);
+  async fetch(
+    request: Request,
+    environment: AssetsEnvironment,
+    context: ExecutionContext,
+  ) {
+    const url = new URL(request.url);
+    const fontAsset = fontAssets.get(url.pathname);
+    const response =
+      fontAsset && environment?.ASSETS
+        ? await environment.ASSETS.fetch(
+            new Request(new URL(fontAsset, request.url), {
+              headers: request.headers,
+              method: request.method,
+            }),
+          )
+        : await handler.fetch(request, environment, context);
     const headers = new Headers(response.headers);
 
     for (const [name, value] of Object.entries(securityHeaders)) {
@@ -21,7 +45,7 @@ export default {
 
     if (
       response.status === 200 &&
-      new URL(request.url).pathname.endsWith(".woff2")
+      fontAsset
     ) {
       headers.set("Cache-Control", "public, max-age=31536000, immutable");
       headers.set("Content-Type", "font/woff2");
