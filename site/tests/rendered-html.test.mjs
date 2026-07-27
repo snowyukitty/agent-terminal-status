@@ -7,18 +7,23 @@ import { fileURLToPath } from "node:url";
 const productionOrigin =
   "https://agent-terminal-status.gldtestuser.chatgpt.site";
 
-async function render(headers = {}) {
+async function render({
+  pathname = "/",
+  headers = {},
+  assetResponse,
+} = {}) {
   const workerUrl = new URL("../dist/server/index.js", import.meta.url);
   workerUrl.searchParams.set("test", `${process.pid}-${Date.now()}`);
   const { default: worker } = await import(workerUrl.href);
 
   return worker.fetch(
-    new Request("https://request-origin.invalid/", {
+    new Request(`https://request-origin.invalid${pathname}`, {
       headers: { accept: "text/html", ...headers },
     }),
     {
       ASSETS: {
-        fetch: async () => new Response("Not found", { status: 404 }),
+        fetch: async (request) =>
+          assetResponse?.(request) ?? new Response("Not found", { status: 404 }),
       },
     },
     {
@@ -39,6 +44,47 @@ async function textBuildArtifacts(directory) {
     }
   }
   return results;
+}
+
+function escapeRegex(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function cssVariable(css, name) {
+  const value = css.match(
+    new RegExp(`${escapeRegex(name)}\\s*:\\s*(#[0-9a-f]{6})`, "i"),
+  )?.[1];
+  assert.match(value ?? "", /^#[0-9a-f]{6}$/i, `Invalid CSS variable ${name}`);
+  return value;
+}
+
+function cssColor(css, selector) {
+  const escapedSelector = escapeRegex(selector);
+  const declaration = css.match(
+    new RegExp(`${escapedSelector}\\s*\\{[^}]*\\bcolor:\\s*([^;]+);`, "s"),
+  )?.[1].trim();
+  assert.ok(declaration, `Missing color for ${selector}`);
+
+  const variable = declaration.match(/^var\((--[^)]+)\)$/)?.[1];
+  const value = variable ? cssVariable(css, variable) : declaration;
+  assert.match(value ?? "", /^#[0-9a-f]{6}$/i, `Invalid color for ${selector}`);
+  return value;
+}
+
+function contrastRatio(foreground, background) {
+  const luminance = (color) => {
+    const channels = [1, 3, 5].map((index) => {
+      const value = Number.parseInt(color.slice(index, index + 2), 16) / 255;
+      return value <= 0.04045
+        ? value / 12.92
+        : ((value + 0.055) / 1.055) ** 2.4;
+    });
+    return 0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2];
+  };
+  const values = [luminance(foreground), luminance(background)].sort(
+    (left, right) => right - left,
+  );
+  return (values[0] + 0.05) / (values[1] + 0.05);
 }
 
 test("server-renders the complete product landing page", async () => {
@@ -80,14 +126,70 @@ test("server-renders the complete product landing page", async () => {
 
 test("metadata origin is fixed even with untrusted forwarding headers", async () => {
   const response = await render({
-    host: "evil.example",
-    "x-forwarded-host": "evil.example",
-    "x-forwarded-proto": "http",
+    headers: {
+      host: "evil.example",
+      "x-forwarded-host": "evil.example",
+      "x-forwarded-proto": "http",
+    },
   });
   const html = await response.text();
 
   assert.match(html, new RegExp(`${productionOrigin.replaceAll(".", "\\.")}/`));
   assert.doesNotMatch(html, /evil\.example/);
+});
+
+test("applies security headers and immutable font caching", async () => {
+  const page = await render();
+  assert.equal(
+    page.headers.get("content-security-policy"),
+    "frame-ancestors 'none'; object-src 'none'; base-uri 'self'",
+  );
+  assert.equal(
+    page.headers.get("referrer-policy"),
+    "strict-origin-when-cross-origin",
+  );
+  assert.equal(page.headers.get("x-content-type-options"), "nosniff");
+  assert.equal(page.headers.get("x-frame-options"), "DENY");
+
+  const font = await render({
+    pathname: "/fonts/Geist-Variable.woff2",
+    assetResponse: () =>
+      new Response(new Uint8Array([0, 1, 2]), {
+        headers: { "content-type": "application/octet-stream" },
+      }),
+  });
+  assert.equal(font.status, 200);
+  assert.equal(
+    font.headers.get("cache-control"),
+    "public, max-age=31536000, immutable",
+  );
+  assert.equal(font.headers.get("content-type"), "font/woff2");
+  assert.equal(font.headers.get("x-content-type-options"), "nosniff");
+
+  const missingFont = await render({ pathname: "/fonts/missing.woff2" });
+  assert.equal(missingFont.status, 404);
+  assert.notEqual(
+    missingFont.headers.get("cache-control"),
+    "public, max-age=31536000, immutable",
+  );
+});
+
+test("keeps small informational text at AA contrast", async () => {
+  const css = await readFile(
+    new URL("../app/globals.css", import.meta.url),
+    "utf8",
+  );
+  const terminalBackground = cssVariable(css, "--terminal");
+  const paperBackground = cssVariable(css, "--paper");
+
+  assert.ok(
+    contrastRatio(cssColor(css, ".status-row .sep"), terminalBackground) >= 4.5,
+    "terminal separators must meet WCAG AA contrast",
+  );
+  assert.ok(
+    contrastRatio(cssColor(css, ".principle em"), paperBackground) >= 4.5,
+    "principle labels must meet WCAG AA contrast",
+  );
 });
 
 test("build output is portable and self-hosts its fonts", async () => {

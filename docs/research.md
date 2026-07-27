@@ -131,6 +131,8 @@ native goal:
 | [#81454](https://github.com/anthropics/claude-code/issues/81454) | Unclear usable width and right-edge truncation |
 | [#73726](https://github.com/anthropics/claude-code/issues/73726) | Earlier request for terminal width in JSON; `COLUMNS` arrived in 2.1.153 |
 | [#76988](https://github.com/anthropics/claude-code/issues/76988) | Width-aware status lines do not rerun on terminal resize |
+| [#79433](https://github.com/anthropics/claude-code/issues/79433) | Valid custom status commands can silently fall back to Claude's default |
+| [#76411](https://github.com/anthropics/claude-code/issues/76411) | Custom status output can disappear in macOS fullscreen TUI mode |
 | [#1669](https://github.com/anthropics/claude-code/issues/1669) | Long-running cwd confusion and wrong-directory behavior |
 | [#80011](https://github.com/anthropics/claude-code/issues/80011) | Keep status information visible during active processing |
 | [#74408](https://github.com/anthropics/claude-code/issues/74408) | Emit terminal cwd sequences for tab/window integration |
@@ -139,9 +141,12 @@ native goal:
 | [#77829](https://github.com/anthropics/claude-code/issues/77829) | Custom status-line parity in the VS Code extension |
 
 On the snapshot date, #70132, #81298, and #74344 were open and had no comments.
-#79794 is especially useful evidence because session cwd metadata is correct
-while Claude's visible linked-worktree identity is not. The correct upstream
-action is to strengthen an existing focused issue, not create another one.
+#70132 had carried the `stale` label since 2026-07-21; #74344 did not. #79794 is
+especially useful evidence because session cwd metadata is correct while
+Claude's visible linked-worktree identity is not. The correct upstream action
+is to strengthen an existing focused issue rather than create another one, but
+the target must be re-evaluated if lifecycle automation closes the earliest
+request before the real-use evidence is ready.
 
 ## Public contribution surface
 

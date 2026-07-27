@@ -16,14 +16,23 @@ Related open reports add implementation evidence:
 - [#81454 — Usable status-line width is not documented](https://github.com/anthropics/claude-code/issues/81454)
 - [#73726 — Terminal width was missing from status command data](https://github.com/anthropics/claude-code/issues/73726)
 - [#76988 — Status line does not rerun on terminal resize](https://github.com/anthropics/claude-code/issues/76988)
+- [#79433 — Valid custom status lines can silently fall back to the default](https://github.com/anthropics/claude-code/issues/79433)
+- [#76411 — Custom status lines do not render in macOS fullscreen TUI mode](https://github.com/anthropics/claude-code/issues/76411)
 
 The public feature template requires a duplicate search. A new broad "workspace
 identity layer" issue would fragment the strongest immediate request. The
-recommended eventual action is a focused evidence comment on #70132, with a
-cross-reference to #74344 for monorepo behavior.
+recommended eventual action is a focused evidence comment on #70132 while it
+remains open and relevant, with a cross-reference to #74344 for monorepo
+behavior.
 
 The duplicate snapshot was refreshed on 2026-07-27: #70132, #81298, and #74344
-were still open with no comments. Recheck immediately before posting.
+were still open with no comments. However, #70132 received the `stale` label on
+2026-07-21, while #74344 remained active without it. The repository runs
+`sweep.yml`, `auto-close-duplicates.yml`, and related lifecycle automation, so
+the earliest issue may close before this packet's evidence gate is satisfied.
+Do not post a low-signal comment merely to reset stale state. Recheck the thread
+and labels immediately before posting; if #70132 has closed, evaluate #74344
+and the then-current duplicate landscape as the narrower fallback.
 
 Do not submit the draft below until real-use evidence is available.
 
@@ -86,6 +95,9 @@ What this does **not** yet prove:
 - persistence expectations during every active-turn UI state.
 - immediate rerendering after terminal resize; today the next event or an
   optional `refreshInterval` is required.
+- reliable delivery in every Claude Code TUI mode or release; #79433 and #76411
+  track current custom-status regressions that a native identity segment would
+  avoid.
 
 ## Proposed native experience
 

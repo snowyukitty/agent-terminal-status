@@ -410,7 +410,7 @@ a:focus-visible {
 }
 
 .status-row .sep {
-  color: #536057;
+  color: #77857c;
 }
 
 .console-caption {
@@ -541,7 +541,7 @@ a:focus-visible {
 
 .principle em {
   justify-self: end;
-  color: #7c847e;
+  color: var(--muted);
   font-family: var(--font-geist-mono), monospace;
   font-size: 9px;
   font-style: normal;
