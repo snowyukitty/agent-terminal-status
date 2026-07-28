@@ -173,7 +173,11 @@ Installation is intentionally reversible:
 - `settings.json` is parsed before any change and written atomically;
 - invalid JSON is refused without modification;
 - replacing an existing status line requires explicit force;
-- reinstall is idempotent and retains the original rollback value;
+- reinstall is idempotent and retains the original rollback value while its
+  metadata remains valid;
+- if rollback metadata is missing or incomplete, reinstall repairs the adapter
+  but marks rollback as unknown instead of treating its own command as prior
+  user configuration;
 - uninstall restores settings only while the active command is still ours.
 
 Both installers preserve settings semantics but may normalize indentation,
@@ -233,6 +237,8 @@ See:
 
 - [VISION.md](VISION.md) for the workspace identity thesis;
 - [ROADMAP.md](ROADMAP.md) for validated and exploratory work;
+- [the public release evidence gate](docs/release-evidence.md) for the
+  observation protocol and privacy boundary;
 - [the architecture decision](docs/decisions/0001-identity-first-command-adapters.md);
 - [research findings](docs/research.md);
 - [the upstream Claude Code evidence packet](docs/upstream.md).

@@ -48,6 +48,10 @@ point tests at a real Claude configuration.
 - Keep code, comments, logs, documentation, and fixtures in English.
 - Do not include real home paths, hostnames, account names, credentials, or
   private repository names in fixtures or screenshots.
+- Keep raw usage evidence under the ignored `.evidence-private/` directory or
+  outside the repository. Never paste raw session notes or screenshots into a
+  public issue, pull request, workflow input, or Actions log; publish only a
+  manually reviewed, sanitized derivative.
 
 For a significant product or architecture change, add a concise decision note
 under `docs/decisions/`. Record the evidence, the smaller alternatives, and the

@@ -411,6 +411,24 @@ class InstallerTests(unittest.TestCase):
     def read_settings(self) -> dict:
         return json.loads((self.config / "settings.json").read_text(encoding="utf-8"))
 
+    @staticmethod
+    def damage_install_state(state_path: Path, scenario: str) -> None:
+        if scenario == "deleted":
+            state_path.unlink()
+        elif scenario == "empty":
+            state_path.write_text("", encoding="utf-8")
+        elif scenario == "invalid-json":
+            state_path.write_text("{ invalid", encoding="utf-8")
+        else:
+            state = json.loads(state_path.read_text(encoding="utf-8"))
+            if scenario == "missing-presence":
+                state.pop("previousStatusLinePresent")
+            elif scenario == "missing-value":
+                state.pop("previousStatusLine")
+            else:
+                state["previousStatusLinePresent"] = "true"
+            state_path.write_text(json.dumps(state), encoding="utf-8")
+
     def test_install_and_uninstall_preserve_unrelated_settings(self) -> None:
         self.write_settings({"theme": "dark", "env": {"EXAMPLE": "日本語"}})
         manager.install(self.config)
@@ -462,22 +480,7 @@ class InstallerTests(unittest.TestCase):
                 )
                 manager.install(config, force=True)
                 state_path = config / "agent-terminal-status" / "install-state.json"
-
-                if scenario == "deleted":
-                    state_path.unlink()
-                elif scenario == "empty":
-                    state_path.write_text("", encoding="utf-8")
-                elif scenario == "invalid-json":
-                    state_path.write_text("{ invalid", encoding="utf-8")
-                else:
-                    state = json.loads(state_path.read_text(encoding="utf-8"))
-                    if scenario == "missing-presence":
-                        state.pop("previousStatusLinePresent")
-                    elif scenario == "missing-value":
-                        state.pop("previousStatusLine")
-                    else:
-                        state["previousStatusLinePresent"] = "true"
-                    state_path.write_text(json.dumps(state), encoding="utf-8")
+                self.damage_install_state(state_path, scenario)
 
                 errors = io.StringIO()
                 with redirect_stderr(errors):
@@ -487,6 +490,56 @@ class InstallerTests(unittest.TestCase):
                 self.assertNotIn("statusLine", after)
                 self.assertEqual(after["theme"], "dark")
                 self.assertIn("cannot be restored", errors.getvalue())
+                self.assertFalse((config / "agent-terminal-status").exists())
+
+    def test_reinstall_marks_damaged_rollback_state_unknown(self) -> None:
+        previous = {"type": "command", "command": "old-status", "padding": 3}
+
+        for scenario in (
+            "deleted",
+            "empty",
+            "invalid-json",
+            "missing-presence",
+            "missing-value",
+            "wrong-presence-type",
+        ):
+            with self.subTest(scenario=scenario):
+                config = Path(self.temporary.name) / f"reinstall-{scenario}"
+                config.mkdir()
+                settings_path = config / "settings.json"
+                settings_path.write_text(
+                    json.dumps(
+                        {"statusLine": previous, "theme": "dark"},
+                        ensure_ascii=False,
+                    ),
+                    encoding="utf-8",
+                )
+                manager.install(config, force=True)
+                state_path = config / "agent-terminal-status" / "install-state.json"
+                self.damage_install_state(state_path, scenario)
+
+                reinstall_errors = io.StringIO()
+                with redirect_stdout(io.StringIO()), redirect_stderr(reinstall_errors):
+                    manager.install(config)
+
+                repaired_state = json.loads(state_path.read_text(encoding="utf-8"))
+                self.assertIsNone(repaired_state["previousStatusLinePresent"])
+                self.assertIsNone(repaired_state["previousStatusLine"])
+                self.assertIn("cannot be restored", reinstall_errors.getvalue())
+
+                uninstall_output = io.StringIO()
+                uninstall_errors = io.StringIO()
+                with redirect_stdout(uninstall_output), redirect_stderr(uninstall_errors):
+                    manager.uninstall(config)
+
+                after = json.loads(settings_path.read_text(encoding="utf-8"))
+                self.assertNotIn("statusLine", after)
+                self.assertEqual(after["theme"], "dark")
+                self.assertIn("cannot be restored", uninstall_errors.getvalue())
+                self.assertNotIn(
+                    "Restored the previous",
+                    uninstall_output.getvalue(),
+                )
                 self.assertFalse((config / "agent-terminal-status").exists())
 
     def test_uninstall_does_not_overwrite_later_user_change(self) -> None:

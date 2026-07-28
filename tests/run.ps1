@@ -57,6 +57,36 @@ function Invoke-Git {
     }
 }
 
+function Set-DamagedInstallState {
+    param(
+        [Parameter(Mandatory = $true)][string] $Path,
+        [Parameter(Mandatory = $true)][string] $Scenario,
+        [Parameter(Mandatory = $true)] $Encoding
+    )
+    if ($Scenario -eq 'deleted') {
+        Remove-Item -LiteralPath $Path -Force
+    }
+    elseif ($Scenario -eq 'empty') {
+        [IO.File]::WriteAllText($Path, '', $Encoding)
+    }
+    elseif ($Scenario -eq 'invalid-json') {
+        [IO.File]::WriteAllText($Path, '{ invalid', $Encoding)
+    }
+    else {
+        $state = [IO.File]::ReadAllText($Path) | ConvertFrom-Json
+        if ($Scenario -eq 'missing-presence') {
+            $state.PSObject.Properties.Remove('previousStatusLinePresent')
+        }
+        elseif ($Scenario -eq 'missing-value') {
+            $state.PSObject.Properties.Remove('previousStatusLine')
+        }
+        else {
+            $state.previousStatusLinePresent = 'true'
+        }
+        [IO.File]::WriteAllText($Path, ($state | ConvertTo-Json -Depth 10), $Encoding)
+    }
+}
+
 $env:ATS_TESTING = '1'
 . (Join-Path $root 'src\statusline.ps1')
 
@@ -471,34 +501,68 @@ try {
 
                 $installDir = Join-Path $config 'agent-terminal-status'
                 $statePath = Join-Path $installDir 'install-state.json'
-                if ($scenario -eq 'deleted') {
-                    Remove-Item -LiteralPath $statePath -Force
-                }
-                elseif ($scenario -eq 'empty') {
-                    [IO.File]::WriteAllText($statePath, '', $encoding)
-                }
-                elseif ($scenario -eq 'invalid-json') {
-                    [IO.File]::WriteAllText($statePath, '{ invalid', $encoding)
-                }
-                else {
-                    $state = [IO.File]::ReadAllText($statePath) | ConvertFrom-Json
-                    if ($scenario -eq 'missing-presence') {
-                        $state.PSObject.Properties.Remove('previousStatusLinePresent')
-                    }
-                    elseif ($scenario -eq 'missing-value') {
-                        $state.PSObject.Properties.Remove('previousStatusLine')
-                    }
-                    else {
-                        $state.previousStatusLinePresent = 'true'
-                    }
-                    [IO.File]::WriteAllText($statePath, ($state | ConvertTo-Json -Depth 10), $encoding)
-                }
+                Set-DamagedInstallState $statePath $scenario $encoding
 
                 $messages = & (Join-Path $installDir 'uninstall.ps1') 3>&1
                 $after = [IO.File]::ReadAllText($settingsPath) | ConvertFrom-Json
                 Assert-True ($null -eq $after.PSObject.Properties['statusLine']) "Scenario '$scenario' retained the installed statusLine."
                 Assert-Equal 'dark' $after.theme "Scenario '$scenario' changed an unrelated setting."
                 Assert-True (($messages -join "`n") -match 'cannot be restored') "Scenario '$scenario' did not warn about unavailable rollback."
+                Assert-True (-not (Test-Path -LiteralPath $installDir)) "Scenario '$scenario' did not remove project files."
+            }
+            finally {
+                if (Test-Path -LiteralPath $temporaryRoot) {
+                    $resolvedTemporary = [IO.Path]::GetFullPath($temporaryRoot)
+                    $tempBase = [IO.Path]::GetFullPath([IO.Path]::GetTempPath())
+                    if (-not $resolvedTemporary.StartsWith($tempBase, [StringComparison]::OrdinalIgnoreCase)) {
+                        throw "Refusing to clean unexpected test path: $resolvedTemporary"
+                    }
+                    Remove-Item -LiteralPath $temporaryRoot -Recurse -Force
+                }
+            }
+        }
+    }
+
+    Test-Case 'reinstall marks damaged rollback state unknown' {
+        $encoding = New-Object System.Text.UTF8Encoding($false)
+        foreach ($scenario in @(
+            'deleted',
+            'empty',
+            'invalid-json',
+            'missing-presence',
+            'missing-value',
+            'wrong-presence-type'
+        )) {
+            $temporaryRoot = Join-Path ([IO.Path]::GetTempPath()) ('ats-reinstall-state-' + $scenario + '-' + [Guid]::NewGuid().ToString('N'))
+            $config = Join-Path $temporaryRoot 'claude config'
+            try {
+                New-Item -ItemType Directory -Path $config -Force | Out-Null
+                $settingsPath = Join-Path $config 'settings.json'
+                $settings = [ordered]@{
+                    theme = 'dark'
+                    statusLine = [ordered]@{ type = 'command'; command = 'old-status'; padding = 3 }
+                }
+                [IO.File]::WriteAllText($settingsPath, ($settings | ConvertTo-Json -Depth 10), $encoding)
+                & (Join-Path $root 'scripts\install.ps1') -ConfigDir $config -Force | Out-Null
+
+                $installDir = Join-Path $config 'agent-terminal-status'
+                $statePath = Join-Path $installDir 'install-state.json'
+                Set-DamagedInstallState $statePath $scenario $encoding
+
+                $reinstallMessages = & (Join-Path $root 'scripts\install.ps1') -ConfigDir $config 3>&1
+                $repairedState = [IO.File]::ReadAllText($statePath) | ConvertFrom-Json
+                $presenceProperty = $repairedState.PSObject.Properties['previousStatusLinePresent']
+                $valueProperty = $repairedState.PSObject.Properties['previousStatusLine']
+                Assert-True ($null -ne $presenceProperty -and $null -eq $presenceProperty.Value) "Scenario '$scenario' did not mark rollback presence unknown."
+                Assert-True ($null -ne $valueProperty -and $null -eq $valueProperty.Value) "Scenario '$scenario' invented a prior statusLine."
+                Assert-True (($reinstallMessages -join "`n") -match 'cannot be restored') "Scenario '$scenario' did not warn during reinstall."
+
+                $uninstallMessages = & (Join-Path $installDir 'uninstall.ps1') 3>&1
+                $after = [IO.File]::ReadAllText($settingsPath) | ConvertFrom-Json
+                Assert-True ($null -eq $after.PSObject.Properties['statusLine']) "Scenario '$scenario' retained a stale installed statusLine."
+                Assert-Equal 'dark' $after.theme "Scenario '$scenario' changed an unrelated setting."
+                Assert-True (($uninstallMessages -join "`n") -match 'cannot be restored') "Scenario '$scenario' did not warn during uninstall."
+                Assert-True (($uninstallMessages -join "`n") -notmatch 'Restored the previous') "Scenario '$scenario' falsely claimed rollback success."
                 Assert-True (-not (Test-Path -LiteralPath $installDir)) "Scenario '$scenario' did not remove project files."
             }
             finally {

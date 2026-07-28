@@ -17,6 +17,9 @@ htmlcov/
 .tmp/
 benchmark-results.json
 
+# Private release evidence
+.evidence-private/
+
 # OS files
 .DS_Store
 Thumbs.db

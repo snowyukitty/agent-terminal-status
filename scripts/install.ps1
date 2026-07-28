@@ -143,9 +143,38 @@ if ($null -ne $statusProperty -and -not $alreadyOurs -and -not $Force) {
 
 $previousPresent = $null -ne $statusProperty
 $previousValue = if ($previousPresent) { $statusProperty.Value } else { $null }
-if ($alreadyOurs -and $null -ne $existingState) {
-    $previousPresent = [bool]$existingState.previousStatusLinePresent
-    $previousValue = $existingState.previousStatusLine
+if ($alreadyOurs) {
+    $existingPreviousPresentProperty = if ($null -ne $existingState) {
+        $existingState.PSObject.Properties['previousStatusLinePresent']
+    }
+    else {
+        $null
+    }
+    $existingPreviousValueProperty = if ($null -ne $existingState) {
+        $existingState.PSObject.Properties['previousStatusLine']
+    }
+    else {
+        $null
+    }
+    $existingRollbackKnown = $null -ne $existingPreviousPresentProperty -and
+        $existingPreviousPresentProperty.Value -is [bool] -and (
+            -not [bool]$existingPreviousPresentProperty.Value -or
+            $null -ne $existingPreviousValueProperty
+        )
+    if ($existingRollbackKnown) {
+        $previousPresent = [bool]$existingPreviousPresentProperty.Value
+        $previousValue = if ($null -ne $existingPreviousValueProperty) {
+            $existingPreviousValueProperty.Value
+        }
+        else {
+            $null
+        }
+    }
+    else {
+        $previousPresent = $null
+        $previousValue = $null
+        Write-Warning 'The install state is unavailable or incomplete; a previously preserved statusLine cannot be restored. Reinstalling with rollback marked unknown.'
+    }
 }
 
 if (-not (Test-Path -LiteralPath $installDir)) {

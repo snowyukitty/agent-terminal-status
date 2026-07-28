@@ -74,6 +74,19 @@ def _is_our_command(command: str, installed_command: str = "") -> bool:
     )
 
 
+def _rollback_from_state(
+    state: dict[str, Any] | None,
+) -> tuple[bool, bool | None, Any]:
+    if not isinstance(state, dict):
+        return False, None, None
+    previous_present = state.get("previousStatusLinePresent")
+    if not isinstance(previous_present, bool):
+        return False, None, None
+    if previous_present and "previousStatusLine" not in state:
+        return False, None, None
+    return True, previous_present, state.get("previousStatusLine")
+
+
 def install(config_dir: Path, force: bool = False) -> None:
     config_dir = config_dir.expanduser().resolve()
     paths = _installed_paths(config_dir)
@@ -83,7 +96,6 @@ def install(config_dir: Path, force: bool = False) -> None:
         raise RuntimeError(f"Source status line not found at {source_status}.")
 
     settings = read_json(paths["settings"])
-    existing_state = read_json(paths["state"]) if paths["state"].exists() else None
     python = str(Path(sys.executable).resolve()).replace("\\", "/")
     status_path = str(paths["status"]).replace("\\", "/")
     installed_command = f"{shlex.quote(python)} {shlex.quote(status_path)}"
@@ -99,9 +111,23 @@ def install(config_dir: Path, force: bool = False) -> None:
 
     previous_present = "statusLine" in settings
     previous_value = settings.get("statusLine")
-    if already_ours and existing_state:
-        previous_present = bool(existing_state.get("previousStatusLinePresent"))
-        previous_value = existing_state.get("previousStatusLine")
+    if already_ours:
+        existing_state = None
+        if paths["state"].exists():
+            try:
+                existing_state = read_json(paths["state"])
+            except RuntimeError:
+                existing_state = None
+        rollback_known, previous_present, previous_value = _rollback_from_state(
+            existing_state
+        )
+        if not rollback_known:
+            print(
+                "Warning: the install state is unavailable or incomplete; "
+                "a previously preserved statusLine cannot be restored. "
+                "Reinstalling with rollback marked unknown.",
+                file=sys.stderr,
+            )
 
     paths["dir"].mkdir(parents=True, exist_ok=True)
     shutil.copy2(source_status, paths["status"])

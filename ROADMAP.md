@@ -22,12 +22,10 @@ Implemented:
 
 Before calling 0.1 a public release:
 
-- use it across several real Claude Code sessions for at least a week;
-- capture a real in-product screenshot in Windows and one POSIX terminal;
-- validate SSH, WSL, and container host aliases on actual remote sessions;
-- collect feedback on whether hostname belongs in `auto` or should be opt-in;
-- after the final website deployment, confirm artifact provenance separately,
-  then manually dispatch `Production smoke` and record a healthy live-edge run.
+Complete R1-R5 in the canonical
+[public release evidence gate](docs/release-evidence.md). Unfinished human
+evidence does not reopen the engineering checkpoint; use that document's
+explicit reopen rule instead of starting another static review round.
 
 ## Next — validate development identity
 
@@ -42,7 +40,7 @@ These are credible next experiments, not committed default fields:
 - add signed release artifacts or a package only when they materially improve
   installation trust and simplicity;
 - gather evidence on current-directory changes during long-running sessions and
-  whether an optional refresh interval is warranted.
+  whether an optional refresh interval is warranted;
 - test whether documented `workspace.repo` / `workspace.git_worktree` fields can
   reduce Git process work without guessing the local repository root.
 

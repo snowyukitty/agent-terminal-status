@@ -181,17 +181,22 @@ thread immediately before posting and avoid repeating newer evidence.
 
 ## Evidence gate
 
-- [x] Working external prototype
-- [x] Reproducible renderer tests
-- [x] Windows PowerShell 5.1 and PowerShell 7 coverage
-- [x] Git/non-Git/worktree/detached/non-ASCII/narrow scenarios
-- [x] Complete-process latency measurements
-- [x] Duplicate and contribution-surface research
-- [ ] One week of regular multi-session use
-- [ ] Real Claude Code screenshots on Windows and POSIX
-- [ ] SSH, WSL, and container observations
-- [x] Sanitized public repository/demo URL
-- [ ] Fresh duplicate/thread review immediately before posting
+The technical prototype gate is complete: renderer and installer tests,
+Windows PowerShell 5.1 and PowerShell 7 coverage, Git and non-Git edge cases,
+complete-process latency measurements, duplicate research, and a sanitized
+public repository and demo are all available.
 
-Until those unchecked items are resolved, this document is preparation, not a
-claim that an upstream submission is ready.
+Human observations are tracked once in the canonical
+[public release evidence gate](release-evidence.md):
+
+- R1 supplies the week of regular multi-session use;
+- R2 supplies real Claude Code screenshots on Windows and POSIX;
+- R3 supplies SSH, WSL, and container observations.
+
+Do not duplicate their completion state here. After R1-R3 are complete, perform
+one upstream-specific final step:
+
+- [ ] Re-read the live duplicate threads and labels immediately before posting.
+
+Until R1-R3 and the fresh thread review are complete, this document is
+preparation, not a claim that an upstream submission is ready.
