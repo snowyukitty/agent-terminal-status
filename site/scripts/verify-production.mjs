@@ -6,6 +6,8 @@ const defaultOrigin =
 const origin = new URL(process.argv[2] ?? process.env.SITE_ORIGIN ?? defaultOrigin);
 const immutable = "public, max-age=31536000, immutable";
 const productionProbe = randomUUID();
+const fetchAttempts = 3;
+const retryDelayMs = 250;
 const securityHeaders = {
   "content-security-policy":
     "frame-ancestors 'none'; object-src 'none'; base-uri 'self'",
@@ -35,7 +37,24 @@ function assertSecurityHeaders(response, pathname) {
 }
 
 async function fetchOk(pathname, options) {
-  const response = await fetch(url(pathname), options);
+  let response;
+  for (let attempt = 1; attempt <= fetchAttempts; attempt += 1) {
+    try {
+      response = await fetch(url(pathname), options);
+      break;
+    } catch (error) {
+      if (!(error instanceof TypeError) || attempt === fetchAttempts) {
+        throw error;
+      }
+      console.warn(
+        `${pathname} fetch failed; retrying (${attempt + 1}/${fetchAttempts}).`,
+      );
+      await new Promise((resolve) => {
+        setTimeout(resolve, retryDelayMs * attempt);
+      });
+    }
+  }
+  assert.ok(response, `${pathname} did not produce a response`);
   assert.equal(response.status, 200, `${pathname} returned ${response.status}`);
   return response;
 }

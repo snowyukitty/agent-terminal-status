@@ -47,12 +47,21 @@ function response(body, { status = 200, contentType, cacheControl, link } = {}) 
   return new Response(body, { status, headers });
 }
 
-function recordingFetch(requests) {
+function recordingFetch(
+  requests,
+  { onTransientFailure = () => {}, transientFailures = 0 } = {},
+) {
+  let remainingTransientFailures = transientFailures;
   return async (input, options) => {
     const requestUrl = new URL(
       input instanceof Request ? input.url : String(input),
     );
     assert.equal(requestUrl.origin, productionOrigin);
+    if (remainingTransientFailures > 0) {
+      remainingTransientFailures -= 1;
+      onTransientFailure();
+      throw new TypeError("fetch failed");
+    }
     requests.push({ options, url: requestUrl });
 
     if (requestUrl.pathname === "/") {
@@ -146,14 +155,22 @@ function recordingFetch(requests) {
   };
 }
 
-async function runVerifier(runName) {
+async function runVerifier(runName, { transientFailures = 0 } = {}) {
   const requests = [];
+  let observedTransientFailures = 0;
   const originalFetch = globalThis.fetch;
   const originalOriginArgument = process.argv[2];
   const originalLog = console.log;
-  globalThis.fetch = recordingFetch(requests);
+  const originalWarn = console.warn;
+  globalThis.fetch = recordingFetch(requests, {
+    onTransientFailure: () => {
+      observedTransientFailures += 1;
+    },
+    transientFailures,
+  });
   process.argv[2] = productionOrigin;
   console.log = () => {};
+  console.warn = () => {};
 
   try {
     const verifierUrl = new URL(
@@ -168,6 +185,7 @@ async function runVerifier(runName) {
   } finally {
     globalThis.fetch = originalFetch;
     console.log = originalLog;
+    console.warn = originalWarn;
     if (originalOriginArgument === undefined) {
       delete process.argv[2];
     } else {
@@ -175,7 +193,7 @@ async function runVerifier(runName) {
     }
   }
 
-  return requests;
+  return { requests, transientFailures: observedTransientFailures };
 }
 
 function assertProbeContract(requests) {
@@ -258,7 +276,19 @@ function assertProbeContract(requests) {
 }
 
 test("production verifier probes every mutable path with one fresh token", async () => {
-  const firstToken = assertProbeContract(await runVerifier("first"));
-  const secondToken = assertProbeContract(await runVerifier("second"));
-  assert.notEqual(firstToken, secondToken, "Independent runs must not reuse tokens");
+  const firstRun = await runVerifier("first");
+  const secondRun = await runVerifier("second");
+  const firstToken = assertProbeContract(firstRun.requests);
+  const secondToken = assertProbeContract(secondRun.requests);
+  assert.notEqual(
+    firstToken,
+    secondToken,
+    "Independent runs must not reuse tokens",
+  );
+});
+
+test("production verifier retries a transient network failure", async () => {
+  const result = await runVerifier("network-retry", { transientFailures: 1 });
+  assert.equal(result.transientFailures, 1);
+  assertProbeContract(result.requests);
 });
