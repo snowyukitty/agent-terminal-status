@@ -1,12 +1,13 @@
 # Claude Code upstream evidence packet
 
-Prepared: **2026-07-27**.
+Prepared: **2026-07-28**.
 
 ## Do not file a new issue
 
 Equivalent requests already exist:
 
 - [#70132 — Display current working directory in CLI prompt](https://github.com/anthropics/claude-code/issues/70132)
+- [#73162 — Show project/codebase identity by default](https://github.com/anthropics/claude-code/issues/73162)
 - [#81298 — Display current working directory/project context](https://github.com/anthropics/claude-code/issues/81298)
 - [#74344 — Show working subfolder, not just Git root](https://github.com/anthropics/claude-code/issues/74344)
 
@@ -22,23 +23,25 @@ Related open reports add implementation evidence:
 The public feature template requires a duplicate search. A new broad "workspace
 identity layer" issue would fragment the strongest immediate request. The
 recommended eventual action is a focused evidence comment on #70132 while it
-remains open and relevant, with a cross-reference to #74344 for monorepo
-behavior.
+remains open and relevant, with cross-references to #73162 for default project
+identity, #74344 for monorepo behavior, and #79794 for linked worktrees.
 
-The duplicate snapshot was refreshed on 2026-07-27: #70132, #81298, and #74344
-were still open with no comments. However, #70132 received the `stale` label on
-2026-07-21, while #74344 remained active without it. The repository runs
-`sweep.yml`, `auto-close-duplicates.yml`, and related lifecycle automation, so
-the earliest issue may close before this packet's evidence gate is satisfied.
-Do not post a low-signal comment merely to reset stale state. Recheck the thread
-and labels immediately before posting; if #70132 has closed, evaluate #74344
-and the then-current duplicate landscape as the narrower fallback.
+The duplicate snapshot was refreshed on 2026-07-28: #70132, #73162, #81298,
+and #74344 were still open with no comments or reactions. #70132 received the
+`stale` label on 2026-07-21; the other three did not yet carry it. The
+repository's public
+[lifecycle code](https://github.com/anthropics/claude-code/blob/main/scripts/issue-lifecycle.ts)
+marks inactive issues stale and its
+[sweep](https://github.com/anthropics/claude-code/blob/main/scripts/sweep.ts)
+closes a stale issue after 14 days, but explicitly skips closure when a human
+adds a comment after the stale label or the issue reaches ten thumbs-up
+reactions.
 
-#74344 was opened on 2026-07-05. If the same roughly 29-day inactivity window
-that labeled #70132 applies, it could become stale around 2026-08-03. This is an
-estimate, not a posting deadline: stale comments have frequently failed to
-prevent closure, so evidence quality remains more important than keeping a
-particular thread alive.
+That mechanism does not justify a keepalive. Post only when the comment adds
+substantive prototype or real-use evidence. Recheck the threads and labels
+immediately before posting; if #70132 has closed, evaluate #73162, #74344, and
+the then-current duplicate landscape instead of mechanically opening another
+request.
 
 Do not submit the draft below until real-use evidence is available.
 
@@ -170,11 +173,16 @@ identity. Do not include private real paths or hostnames.
 > cwd, repository-relative when applicable, adaptive middle shortening, and an
 > existing config path to disable/replace it. Hostname can remain opt-in.
 >
+> This is engineering prototype evidence, not a prevalence or real-use claim.
+>
 > Prototype, tests, and measurements:
 > https://github.com/snowyukitty/agent-terminal-status
 >
-> Live demo: https://agent-terminal-status.gldtestuser.chatgpt.site
-> Related monorepo-subfolder request: #74344.
+> Visual guide: https://agent-terminal-status.gldtestuser.chatgpt.site/docs
+>
+> Related default-identity request: #73162. Related monorepo-subfolder request:
+> #74344. The linked-worktree badge case in #79794 is another example where
+> visible identity can disagree with the actual session directory.
 
 Keep the posted comment shorter if the issue has evolved. Re-read the full
 thread immediately before posting and avoid repeating newer evidence.

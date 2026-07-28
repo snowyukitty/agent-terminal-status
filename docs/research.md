@@ -125,6 +125,7 @@ native goal:
 | Issue | Overlap |
 | --- | --- |
 | [#70132](https://github.com/anthropics/claude-code/issues/70132) | Exact request for visible current working directory across parallel projects |
+| [#73162](https://github.com/anthropics/claude-code/issues/73162) | Exact request for project/cwd identity by default despite the custom status-line workaround |
 | [#81298](https://github.com/anthropics/claude-code/issues/81298) | Exact current project/directory context request |
 | [#74344](https://github.com/anthropics/claude-code/issues/74344) | Actual monorepo subfolder instead of only Git root |
 | [#79794](https://github.com/anthropics/claude-code/issues/79794) | Built-in project badge resolves linked worktrees to the main worktree name |
@@ -140,13 +141,14 @@ native goal:
 | [#71582](https://github.com/anthropics/claude-code/issues/71582) | Persistent status in Desktop |
 | [#77829](https://github.com/anthropics/claude-code/issues/77829) | Custom status-line parity in the VS Code extension |
 
-On the snapshot date, #70132, #81298, and #74344 were open and had no comments.
-#70132 had carried the `stale` label since 2026-07-21; #74344 did not. #79794 is
-especially useful evidence because session cwd metadata is correct while
-Claude's visible linked-worktree identity is not. The correct upstream action
-is to strengthen an existing focused issue rather than create another one, but
-the target must be re-evaluated if lifecycle automation closes the earliest
-request before the real-use evidence is ready.
+On the 2026-07-28 snapshot, #70132, #73162, #81298, and #74344 were open with
+no comments or reactions. #70132 had carried the `stale` label since
+2026-07-21; the other three did not. #79794 is especially useful evidence
+because session cwd metadata is correct while Claude's visible linked-worktree
+identity is not. The correct upstream action is to strengthen an existing
+focused issue rather than create another one, but the target must be
+re-evaluated if lifecycle automation closes the earliest request before the
+real-use evidence is ready.
 
 ## Public contribution surface
 
@@ -156,6 +158,13 @@ requires submitters to search existing requests and keep a request to one
 feature. The public repository exposes documentation, plugins, examples,
 changelog, and issue workflows, but not the core CLI TUI implementation or a
 general contribution guide.
+
+The plugin route cannot provide the requested default either. Claude Code's
+[plugin reference](https://code.claude.com/docs/en/plugins-reference)
+currently permits only `agent` and `subagentStatusLine` in a plugin's
+`settings.json`; an unknown main `statusLine` setting is ignored. A plugin can
+ship the adapter executable, but it cannot activate the persistent identity
+line that solves this request.
 
 The credible path for this feature is therefore:
 
