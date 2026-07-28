@@ -76,9 +76,10 @@ function recordingFetch(requests) {
           '<script src="/delivery/assets/site.js"></script>',
           '<script src="/delivery/assets/other.js"></script>',
           '<script src="/delivery/assets/docs.js"></script>',
-          '<article lang="en">workspace.current_dir · git -C · 150 ms</article>',
-          '<article lang="ja">五つの慎重な動作</article>',
-          '<article lang="zh-Hant">五個謹慎步驟</article>',
+          '<article id="guide-en" lang="en">workspace.current_dir · git -C · 150 ms</article>',
+          '<article id="guide-es" lang="es">Cinco pasos cuidadosos y, después, silencio.</article>',
+          '<article id="guide-ja" lang="ja">五つの慎重な動作</article>',
+          '<article id="guide-zh-hant" lang="zh-Hant">五個謹慎步驟</article>',
         ].join(""),
         { contentType: "text/html" },
       );
@@ -233,7 +234,7 @@ function assertProbeContract(requests) {
   assert.equal(
     docsRequest?.url.searchParams.get("production-smoke"),
     token,
-    "The three-language guide must use the run's probe token",
+    "The four-language guide must use the run's probe token",
   );
 
   const rootRequests = requests.filter(({ url }) => url.pathname === "/");

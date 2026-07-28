@@ -128,7 +128,7 @@ test("server-renders the complete product landing page", async () => {
   assert.doesNotMatch(html, /codex-preview|SkeletonPreview|Your site is taking shape/);
 });
 
-test("server-renders the complete three-language field guide", async () => {
+test("server-renders the complete four-language field guide", async () => {
   const response = await render({ pathname: "/docs" });
   assert.equal(response.status, 200);
   assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i);
@@ -136,7 +136,7 @@ test("server-renders the complete three-language field guide", async () => {
   const html = await response.text();
   assert.match(
     html,
-    /<title>How it works — A field guide in three languages · agent-terminal-status<\/title>/i,
+    /<title>How it works — A field guide in four languages · agent-terminal-status<\/title>/i,
   );
   assert.match(
     html,
@@ -146,11 +146,17 @@ test("server-renders the complete three-language field guide", async () => {
     html,
     /<meta property="og:image" content="https:\/\/agent-terminal-status\.gldtestuser\.chatgpt\.site\/og\.jpg"/,
   );
-  assert.match(html, /A field guide · 3 languages · 1 invariant/);
-  assert.match(html, /lang="en"/);
-  assert.match(html, /lang="ja"/);
-  assert.match(html, /lang="zh-Hant"/);
+  assert.match(html, /A field guide · 4 languages · 1 invariant/);
+  assert.match(html, /id="guide-en"[^>]*lang="en"/);
+  assert.match(html, /id="guide-es"[^>]*lang="es"/);
+  assert.match(html, /id="guide-ja"[^>]*lang="ja"/);
+  assert.match(html, /id="guide-zh-hant"[^>]*lang="zh-Hant"/);
+  assert.match(
+    html,
+    /id="guide-en"[\s\S]*id="guide-es"[\s\S]*id="guide-ja"[\s\S]*id="guide-zh-hant"/,
+  );
   assert.match(html, /Five careful moves, then quiet\./);
+  assert.match(html, /Cinco pasos cuidadosos y, después, silencio\./);
   assert.match(html, /五つの慎重な動作。そのあとは静かに。/);
   assert.match(html, /五個謹慎步驟，然後安靜下來。/);
   assert.match(html, /workspace\.current_dir/);
@@ -158,10 +164,17 @@ test("server-renders the complete three-language field guide", async () => {
   assert.match(html, /150 ms/);
   assert.match(html, /Cc · Cf · Cs · Zl · Zp/);
   assert.match(html, /name="docs-language"/);
+  assert.equal((html.match(/name="docs-language"/g) ?? []).length, 4);
   assert.match(html, /<legend class="visually-hidden">Choose guide language<\/legend>/);
   assert.match(html, /type="radio"/);
+  assert.match(html, /aria-controls="guide-es"/);
   assert.match(html, /aria-controls="guide-zh-hant"/);
+  assert.match(html, /for="docs-language-es"/);
   assert.match(html, /for="docs-language-ja"/);
+  assert.match(
+    html,
+    /<label class="language-tab" for="docs-language-es" lang="es">/,
+  );
   assert.match(
     html,
     /<label class="language-tab" for="docs-language-ja" lang="ja">/,
@@ -169,6 +182,7 @@ test("server-renders the complete three-language field guide", async () => {
   assert.match(html, /aria-current="page"/);
   assert.match(html, /href="#guide"/);
   assert.match(html, /<button[^>]*>コピー<\/button>/);
+  assert.match(html, /<button[^>]*>Copiar<\/button>/);
   assert.match(html, /<button[^>]*>複製<\/button>/);
   assert.match(html, /Skip to the guide/);
   assert.equal((html.match(/<h1\b/g) ?? []).length, 1);
@@ -415,6 +429,10 @@ test("keeps the shipped site frontend-only and free of starter residue", async (
   assert.match(
     css,
     /#docs-language-en:checked\s*~\s*\.guide-panels\s+\.guide-panel-en/,
+  );
+  assert.match(
+    css,
+    /#docs-language-es:checked\s*~\s*\.guide-panels\s+\.guide-panel-es/,
   );
   assert.doesNotMatch(
     css,

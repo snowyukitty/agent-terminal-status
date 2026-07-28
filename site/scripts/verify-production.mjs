@@ -69,9 +69,18 @@ assert.match(
   docsHtml,
   new RegExp(`<link rel="canonical" href="${origin.origin}/docs"`),
 );
-assert.match(docsHtml, /lang="en"/);
-assert.match(docsHtml, /lang="ja"/);
-assert.match(docsHtml, /lang="zh-Hant"/);
+for (const [id, lang] of [
+  ["en", "en"],
+  ["es", "es"],
+  ["ja", "ja"],
+  ["zh-hant", "zh-Hant"],
+]) {
+  assert.match(
+    docsHtml,
+    new RegExp(`id="guide-${id}"[^>]*lang="${lang}"`),
+  );
+}
+assert.match(docsHtml, /Cinco pasos cuidadosos y, después, silencio\./);
 assert.match(docsHtml, /workspace\.current_dir/);
 assert.match(docsHtml, /git -C/);
 assert.match(docsHtml, /150 ms/);

@@ -393,7 +393,7 @@ export default function Home() {
               Install agent-terminal-status
             </a>
             <a className="text-link" href="/docs">
-              How it works · EN / 日本語 / 繁體中文
+              How it works · EN / ES / 日本語 / 繁體中文
             </a>
             <a className="text-link" href={repositoryUrl}>
               Star on GitHub <span aria-hidden="true">↗</span>

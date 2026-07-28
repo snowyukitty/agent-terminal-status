@@ -1,6 +1,6 @@
 export type GuideContent = {
-  id: "en" | "ja" | "zh-hant";
-  lang: "en" | "ja" | "zh-Hant";
+  id: "en" | "es" | "ja" | "zh-hant";
+  lang: "en" | "es" | "ja" | "zh-Hant";
   shortLabel: string;
   languageName: string;
   summary: string;
@@ -182,7 +182,7 @@ export const guides: GuideContent[] = [
       eyebrow: "03 · The width theatre",
       title: "Same place. Smaller stage.",
       intro:
-        "The renderer measures terminal cells, not JavaScript string length. These are real outputs from the same identity at three widths.",
+        "The renderer measures terminal cells, not raw string length. These are real outputs from the same identity at three widths.",
       cases: [
         {
           columns: "96",
@@ -304,6 +304,213 @@ export const guides: GuideContent[] = [
         "Keep one quiet line in view, let the path tell the truth, and spend your attention on the work instead.",
       install: "Jump to quick start",
       source: "Read the technical reference",
+    },
+  },
+  {
+    id: "es",
+    lang: "es",
+    shortLabel: "ES",
+    languageName: "Español",
+    summary: "Un recorrido sereno desde el JSON de Claude Code hasta una línea confiable.",
+    eyebrow: "Guía de campo",
+    title: "Una pequeña brújula para un terminal lleno de agentes.",
+    lede:
+      "agent-terminal-status convierte el contexto fugaz de cada ejecución en una promesa espacial persistente: antes de que llegue el siguiente comando, puedes ver dónde va a actuar.",
+    thesis:
+      "No es un panel de control. Es el equivalente, dentro del terminal, a colocar un pequeño y sincero «Estás aquí» sobre el mapa.",
+    journey: {
+      eyebrow: "01 · El viaje de una línea",
+      title: "Cinco pasos cuidadosos y, después, silencio.",
+      intro:
+        "Cada actualización parte del JSON de Claude Code y termina en una sola línea, medida con precisión. Nada se guarda en caché, se comunica al exterior ni se deduce del prompt del shell.",
+      steps: [
+        {
+          code: "workspace.current_dir",
+          label: "Observar",
+          title: "Leer el directorio de trabajo real",
+          body:
+            "El adaptador da prioridad al directorio actual que entrega Claude Code y recurre a alternativas locales seguras cuando los datos de entrada están incompletos.",
+        },
+        {
+          code: "git -C <cwd>",
+          label: "Ubicar",
+          title: "Preguntar a Git por ese lugar exacto",
+          body:
+            "Llamadas acotadas y de solo lectura localizan la raíz del worktree y la rama, con los bloqueos opcionales desactivados. Cada subproceso de Git tiene un tiempo de espera predeterminado de 150 ms.",
+        },
+        {
+          code: "repo/path · branch · host",
+          label: "Nombrar",
+          title: "Construir una identidad honesta",
+          body:
+            "Con el valor predeterminado ATS_PATH_STYLE=context, las rutas dentro de Git son relativas al repositorio y conservan el directorio anidado real. Fuera de Git se muestran relativas al directorio personal o como rutas absolutas.",
+        },
+        {
+          code: "Cc · Cf · Cs · Zl · Zp",
+          label: "Neutralizar",
+          title: "Quitar los trucos invisibles del escenario",
+          body:
+            "Los caracteres de control, formato, sustitutos (surrogates) y separadores de línea se convierten en espacios, de modo que un control de anulación bidi no pueda falsificar la dirección ni crear una segunda línea. Los caracteres CJK normales y los selectores de variación de emoji se conservan.",
+        },
+        {
+          code: "display width ≤ COLUMNS",
+          label: "Encajar",
+          title: "Renderizar según las celdas del terminal",
+          body:
+            "Los caracteres CJK anchos cuentan como dos celdas. La ruta se acorta por el centro; con la configuración automática predeterminada, la rama y la identidad de la máquina ceden su sitio antes que la ubicación.",
+        },
+      ],
+    },
+    principles: {
+      eyebrow: "02 · El contrato de diseño",
+      title: "Tres reglas mantienen útil la línea.",
+      items: [
+        {
+          marker: "01",
+          title: "La ruta es el invariante.",
+          body:
+            "Si Git no está disponible, una consulta a Git agota su tiempo de espera o falla la consulta del nombre del equipo, el renderizador sigue devolviendo una ubicación útil: nunca una línea en blanco.",
+        },
+        {
+          marker: "02",
+          title: "Las señales opcionales deben merecer su espacio.",
+          body:
+            "La rama y la identidad de la máquina ayudan a distinguir terminales parecidos. Cuando falta espacio, ceden ante el directorio que determina dónde actúan los comandos.",
+        },
+        {
+          marker: "03",
+          title: "La incertidumbre se muestra con honestidad.",
+          body:
+            "El proyecto prefiere omitir una rama o advertir que se desconoce el historial de reversión antes que inventar una respuesta categórica pero obsoleta.",
+        },
+      ],
+    },
+    width: {
+      eyebrow: "03 · El teatro del ancho",
+      title: "Mismo lugar. Escenario más pequeño.",
+      intro:
+        "El renderizador mide celdas del terminal, no la longitud bruta de la cadena. Estas son salidas reales de una misma identidad con tres anchos distintos.",
+      cases: [
+        {
+          columns: "96",
+          label: "Contexto completo",
+          output: widthOutputs.wide,
+          note: "Hay espacio para la ruta, la rama y la identidad de la máquina.",
+        },
+        {
+          columns: "44",
+          label: "Conservar la orientación",
+          output: widthOutputs.medium,
+          note: "La rama se retira; la ruta anidada y la identidad de la máquina permanecen.",
+        },
+        {
+          columns: "24",
+          label: "Proteger el invariante",
+          output: widthOutputs.narrow,
+          note: "Solo sobrevive la ruta acortada por el centro.",
+        },
+      ],
+      caption:
+        "Los puntos suspensivos están en el centro a propósito: tanto el inicio, que identifica el repositorio, como el final, que identifica el directorio actual, aportan identidad.",
+    },
+    rollback: {
+      eyebrow: "04 · Un huésped reversible",
+      title: "La instalación toma prestado un ajuste. No se adueña de la casa.",
+      intro:
+        "El instalador trata el valor actual de statusLine en la configuración de Claude Code como datos del usuario, no como un obstáculo que deba sobrescribir.",
+      phases: [
+        {
+          number: "01",
+          title: "Inspeccionar",
+          body:
+            "Analiza la configuración antes de cambiar nada. Un JSON inválido o una línea de estado existente de procedencia ambigua detienen la instalación sin modificar nada.",
+        },
+        {
+          number: "02",
+          title: "Conservar",
+          body:
+            "Solo al usar de forma explícita la opción de forzado (-Force en Windows o --force en macOS y Linux) se guarda como estado de reversión el valor anterior exacto de statusLine. Una reinstalación conserva ese historial original mientras los metadatos sigan siendo válidos.",
+        },
+        {
+          number: "03",
+          title: "Escribir de forma atómica",
+          body:
+            "Copia únicamente los archivos conocidos del proyecto y sustituye la configuración mediante una escritura temporal segura, lo que reduce el riesgo de dejarla incompleta.",
+        },
+        {
+          number: "04",
+          title: "Restaurar con cuidado",
+          body:
+            "El desinstalador restaura el valor anterior solo si el comando activo sigue siendo el nuestro. Una elección posterior del usuario queda intacta.",
+        },
+      ],
+      warningTitle: "Si el historial está dañado, avisar también forma parte del diseño.",
+      warningBody:
+        "Si faltan metadatos de reversión o están incompletos, el estado anterior se declara desconocido. El desinstalador elimina solo aquello que puede identificar y jamás anuncia una restauración ficticia.",
+    },
+    privacy: {
+      eyebrow: "05 · El silencio también significa privacidad",
+      title: "Las señales locales permanecen en tu equipo.",
+      intro:
+        "La ruta de renderizado solo lee stdin, valores del entorno, la ubicación en el sistema de archivos y Git local. Ahí termina toda la conversación.",
+      facts: [
+        {
+          title: "Sin llamadas de red",
+          body:
+            "El renderizado no contacta con GitHub, servicios de telemetría, registros de paquetes ni este sitio web.",
+        },
+        {
+          title: "Sin analítica ni cuentas",
+          body:
+            "El sitio no tiene backend de cuentas, base de datos de la aplicación ni SDK de seguimiento. Su Worker se limita a renderizar y servir páginas y recursos públicos.",
+        },
+        {
+          title: "Sin una pila decorativa de dependencias",
+          body:
+            "Windows usa el PowerShell 5.1 que ya está en el sistema; macOS y Linux usan Python 3.9+ y la biblioteca estándar.",
+        },
+      ],
+      aliasTitle: "Las capturas merecen un nombre que se pueda compartir.",
+      aliasBody:
+        "Un nombre de host puede revelar convenciones internas de nombres. Define ATS_MACHINE con un alias reconocible o usa ATS_SHOW_HOST=never al compartir la pantalla.",
+    },
+    quickStart: {
+      eyebrow: "06 · Prueba la brújula",
+      title: "Clona, instala e interactúa una vez.",
+      intro:
+        "El instalador actualiza la configuración de Claude Code a nivel de usuario. Claude la vuelve a cargar automáticamente; la siguiente interacción actualiza la línea.",
+      windowsTitle: "Windows",
+      windowsBody:
+        "PowerShell 5.1+ · no requiere Python, Node.js, jq, fuentes de iconos ni un framework para personalizar el prompt.",
+      windowsLabel: "Copiar el comando de instalación para Windows",
+      posixTitle: "macOS / Linux",
+      posixBody: "Python 3.9+ · solo la biblioteca estándar.",
+      posixLabel: "Copiar el comando de instalación para macOS y Linux",
+      copyText: "Copiar",
+      copiedText: "Copiado",
+      after:
+        "¿Ya tienes una línea de estado? La instalación se detiene sin cambiarla. Lee las reglas de instalación forzada y desinstalación antes de decidir sustituirla.",
+    },
+    boundaries: {
+      eyebrow: "07 · Lo que deliberadamente no hace",
+      title: "Una brújula funciona mejor cuando no pretende dar el pronóstico del tiempo.",
+      intro:
+        "La versión 0.1 se ciñe a un alcance reducido para mantener una respuesta rápida, legible y confiable.",
+      items: [
+        "No muestra cambios pendientes (dirty), divergencia ahead/behind, el modelo, el uso del contexto ni qué agente está a cargo.",
+        "Sin COLUMNS aplica un límite de 96 celdas; un cambio de tamaño del terminal se refleja en el siguiente evento de Claude en lugar de forzar una actualización.",
+        "No promete información de la rama cuando una consulta a Git local agota su tiempo de espera.",
+        "De forma predeterminada, la identidad de la máquina es el nombre de host visible dentro de ese entorno, no una detección mágica de la topología de SSH, WSL o contenedores.",
+        "Eliminar ZWJ y ZWNJ puede alterar la forma de un emoji complejo o de un sistema de escritura con caracteres enlazados; prevalece el invariante de seguridad de una sola línea.",
+        "No puede obligar a Claude Code a mostrar la línea en los estados de la interfaz donde Claude oculta temporalmente la línea de estado personalizada.",
+      ],
+    },
+    close: {
+      title: "El siguiente comando nunca debería ser un acertijo sobre tu ubicación.",
+      body:
+        "Mantén una línea serena a la vista, deja que la ruta diga la verdad y reserva tu atención para el trabajo.",
+      install: "Ir al inicio rápido",
+      source: "Leer la referencia técnica",
     },
   },
   {
@@ -596,7 +803,7 @@ export const guides: GuideContent[] = [
       eyebrow: "03 · 欄寬劇場",
       title: "位置沒變，只是舞台縮小了。",
       intro:
-        "renderer 計算的是 terminal cell，不是 JavaScript 字串長度。以下是同一組 identity 在三種寬度下的真實輸出。",
+        "renderer 計算的是 terminal cell，不是原始字串長度。以下是同一組 identity 在三種寬度下的真實輸出。",
       cases: [
         {
           columns: "96",

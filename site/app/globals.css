@@ -1288,7 +1288,7 @@ footer p {
   }
 }
 
-/* Three-language field guide */
+/* Four-language field guide */
 
 .docs-main {
   overflow: clip;
@@ -1642,6 +1642,7 @@ footer p {
 }
 
 #docs-language-en:focus-visible ~ .language-tabs label[for="docs-language-en"],
+#docs-language-es:focus-visible ~ .language-tabs label[for="docs-language-es"],
 #docs-language-ja:focus-visible ~ .language-tabs label[for="docs-language-ja"],
 #docs-language-zh-hant:focus-visible
   ~ .language-tabs
@@ -1651,6 +1652,7 @@ footer p {
 }
 
 #docs-language-en:checked ~ .language-tabs label[for="docs-language-en"],
+#docs-language-es:checked ~ .language-tabs label[for="docs-language-es"],
 #docs-language-ja:checked ~ .language-tabs label[for="docs-language-ja"],
 #docs-language-zh-hant:checked
   ~ .language-tabs
@@ -1693,6 +1695,11 @@ footer p {
   label[for="docs-language-en"]
   .language-summary-copy
   small,
+#docs-language-es:checked
+  ~ .language-tabs
+  label[for="docs-language-es"]
+  .language-summary-copy
+  small,
 #docs-language-ja:checked
   ~ .language-tabs
   label[for="docs-language-ja"]
@@ -1718,6 +1725,10 @@ footer p {
   ~ .language-tabs
   label[for="docs-language-en"]
   .language-toggle,
+#docs-language-es:checked
+  ~ .language-tabs
+  label[for="docs-language-es"]
+  .language-toggle,
 #docs-language-ja:checked
   ~ .language-tabs
   label[for="docs-language-ja"]
@@ -1735,6 +1746,7 @@ footer p {
 }
 
 #docs-language-en:checked ~ .guide-panels .guide-panel-en,
+#docs-language-es:checked ~ .guide-panels .guide-panel-es,
 #docs-language-ja:checked ~ .guide-panels .guide-panel-ja,
 #docs-language-zh-hant:checked ~ .guide-panels .guide-panel-zh-hant {
   display: block;

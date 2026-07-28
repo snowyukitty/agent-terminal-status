@@ -8,9 +8,9 @@ const windowsInstall = `git clone ${repositoryUrl}.git; cd agent-terminal-status
 const posixInstall = `git clone ${repositoryUrl}.git && cd agent-terminal-status && sh scripts/install.sh`;
 
 export const metadata: Metadata = {
-  title: "How it works — A field guide in three languages",
+  title: "How it works — A field guide in four languages",
   description:
-    "Explore how agent-terminal-status turns Claude Code context into one safe, width-aware workspace identity line—in English, Japanese, and Traditional Chinese.",
+    "Explore how agent-terminal-status turns Claude Code context into one safe, width-aware workspace identity line—in English, Spanish, Japanese, and Traditional Chinese.",
   alternates: {
     canonical: "/docs",
   },
@@ -19,7 +19,7 @@ export const metadata: Metadata = {
     url: "/docs",
     title: "The one-line compass for coding agents",
     description:
-      "A visual, three-language guide to workspace identity, Unicode safety, terminal width, privacy, and reversible installation.",
+      "A visual, four-language guide to workspace identity, Unicode safety, terminal width, privacy, and reversible installation.",
     images: [
       {
         url: "/og.jpg",
@@ -329,7 +329,7 @@ export default function DocsPage() {
           <div className="docs-hero-copy">
             <p className="eyebrow">
               <span className="live-dot" />
-              A field guide · 3 languages · 1 invariant
+              A field guide · 4 languages · 1 invariant
             </p>
             <h1>
               The one-line compass
@@ -343,6 +343,7 @@ export default function DocsPage() {
             </p>
             <div className="docs-language-badges" aria-label="Available languages">
               <span lang="en">English</span>
+              <span lang="es">Español</span>
               <span lang="ja">日本語</span>
               <span lang="zh-Hant">繁體中文</span>
             </div>
@@ -377,7 +378,7 @@ export default function DocsPage() {
         <section className="language-library" id="languages">
           <header>
             <p className="kicker">Choose a voice, keep the same truth</p>
-            <h2>Three doors into the same little machine.</h2>
+            <h2>Four doors into the same little machine.</h2>
             <p>
               Each guide is written for its language—not stacked through a
               translation filter. Open one; the complete HTML remains
@@ -434,6 +435,8 @@ export default function DocsPage() {
         </div>
         <p>
           <span lang="en">One quiet line</span>
+          <span aria-hidden="true"> · </span>
+          <span lang="es">Una línea serena</span>
           <span aria-hidden="true"> · </span>
           <span lang="ja">静かな一行</span>
           <span aria-hidden="true"> · </span>
