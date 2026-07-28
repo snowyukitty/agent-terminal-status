@@ -60,22 +60,56 @@ assertSecurityHeaders(page, pageProbePath);
 const html = await page.text();
 assert.match(html, new RegExp(`<link rel="canonical" href="${origin.origin}/"`));
 
-const stylesheetPath = html.match(/href="([^"]+\.css)"/)?.[1];
-assert.ok(stylesheetPath, "The deployed page did not reference a stylesheet.");
-assert.match(stylesheetPath, /^\/delivery\/assets\//);
-assert.doesNotMatch(html, /(?:href|src)="\/assets\//);
-const stylesheetProbePath = probe(stylesheetPath);
-const stylesheet = await fetchOk(stylesheetProbePath);
-assertSecurityHeaders(stylesheet, stylesheetProbePath);
-assert.equal(stylesheet.headers.get("cache-control"), immutable);
-const css = await stylesheet.text();
+const docsProbePath = probe("/docs");
+const docsPage = await fetchOk(docsProbePath);
+assertSecurityHeaders(docsPage, docsProbePath);
+assert.match(docsPage.headers.get("content-type") ?? "", /^text\/html\b/i);
+const docsHtml = await docsPage.text();
+assert.match(
+  docsHtml,
+  new RegExp(`<link rel="canonical" href="${origin.origin}/docs"`),
+);
+assert.match(docsHtml, /lang="en"/);
+assert.match(docsHtml, /lang="ja"/);
+assert.match(docsHtml, /lang="zh-Hant"/);
+assert.match(docsHtml, /workspace\.current_dir/);
+assert.match(docsHtml, /git -C/);
+assert.match(docsHtml, /150 ms/);
+
+const renderedHtml = `${html}\n${docsHtml}`;
+assert.doesNotMatch(renderedHtml, /(?:href|src)="\/assets\//);
+const stylesheetPaths = [
+  ...new Set(
+    [...renderedHtml.matchAll(/href="([^"]+\.css)"/g)].map(
+      (match) => match[1],
+    ),
+  ),
+];
+assert.ok(
+  stylesheetPaths.length > 0,
+  "The deployed pages did not reference a stylesheet.",
+);
+const cssBodies = [];
+for (const stylesheetPath of stylesheetPaths) {
+  assert.match(stylesheetPath, /^\/delivery\/assets\//);
+  const stylesheetProbePath = probe(stylesheetPath);
+  const stylesheet = await fetchOk(stylesheetProbePath);
+  assertSecurityHeaders(stylesheet, stylesheetProbePath);
+  assert.equal(stylesheet.headers.get("cache-control"), immutable);
+  assert.match(
+    stylesheet.headers.get("content-type") ?? "",
+    /^text\/css\b/i,
+  );
+  cssBodies.push(await stylesheet.text());
+}
+const css = cssBodies.join("\n");
 assert.match(css, /\/font-assets\/Geist-Variable\.woff2/);
 assert.match(css, /\/font-assets\/GeistMono-Variable\.woff2/);
 assert.doesNotMatch(css, /url\(["']?\/fonts\//);
 
 const scriptPaths = [
   ...new Set(
-    [...html.matchAll(/\b(?:href|src)="([^"]+\.js)"/g)].map(
+    [...renderedHtml.matchAll(/\b(?:href|src)="([^"]+\.js)"/g)].map(
       (match) => match[1],
     ),
   ),
@@ -159,7 +193,7 @@ for (const pathname of [
   assert.notEqual(response.headers.get("cache-control"), immutable);
 }
 
-const backingStylesheetPath = stylesheetPath.replace(
+const backingStylesheetPath = stylesheetPaths[0].replace(
   /^\/delivery\/assets\//,
   "/assets/",
 );

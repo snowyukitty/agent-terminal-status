@@ -104,6 +104,7 @@ test("server-renders the complete product landing page", async () => {
   assert.match(html, /Windows PowerShell 5\.1/);
   assert.match(html, /git clone https:\/\/github\.com\/snowyukitty\/agent-terminal-status/);
   assert.match(html, /workspace\.current_dir/);
+  assert.match(html, /href="\/docs"/);
   assert.match(html, /Skip to content/);
   assert.match(html, /aria-label="Primary navigation"/);
   assert.match(
@@ -127,6 +128,54 @@ test("server-renders the complete product landing page", async () => {
   assert.doesNotMatch(html, /codex-preview|SkeletonPreview|Your site is taking shape/);
 });
 
+test("server-renders the complete three-language field guide", async () => {
+  const response = await render({ pathname: "/docs" });
+  assert.equal(response.status, 200);
+  assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i);
+
+  const html = await response.text();
+  assert.match(
+    html,
+    /<title>How it works — A field guide in three languages · agent-terminal-status<\/title>/i,
+  );
+  assert.match(
+    html,
+    /<link rel="canonical" href="https:\/\/agent-terminal-status\.gldtestuser\.chatgpt\.site\/docs"/,
+  );
+  assert.match(
+    html,
+    /<meta property="og:image" content="https:\/\/agent-terminal-status\.gldtestuser\.chatgpt\.site\/og\.jpg"/,
+  );
+  assert.match(html, /A field guide · 3 languages · 1 invariant/);
+  assert.match(html, /lang="en"/);
+  assert.match(html, /lang="ja"/);
+  assert.match(html, /lang="zh-Hant"/);
+  assert.match(html, /Five careful moves, then quiet\./);
+  assert.match(html, /五つの慎重な動作。そのあとは静かに。/);
+  assert.match(html, /五個謹慎步驟，然後安靜下來。/);
+  assert.match(html, /workspace\.current_dir/);
+  assert.match(html, /git -C &lt;cwd&gt;/);
+  assert.match(html, /150 ms/);
+  assert.match(html, /Cc · Cf · Cs · Zl · Zp/);
+  assert.match(html, /name="docs-language"/);
+  assert.match(html, /<legend class="visually-hidden">Choose guide language<\/legend>/);
+  assert.match(html, /type="radio"/);
+  assert.match(html, /aria-controls="guide-zh-hant"/);
+  assert.match(html, /for="docs-language-ja"/);
+  assert.match(
+    html,
+    /<label class="language-tab" for="docs-language-ja" lang="ja">/,
+  );
+  assert.match(html, /aria-current="page"/);
+  assert.match(html, /href="#guide"/);
+  assert.match(html, /<button[^>]*>コピー<\/button>/);
+  assert.match(html, /<button[^>]*>複製<\/button>/);
+  assert.match(html, /Skip to the guide/);
+  assert.equal((html.match(/<h1\b/g) ?? []).length, 1);
+  assert.doesNotMatch(html, /(?:href|src)="\/assets\//);
+  assert.doesNotMatch(html, /(?:href|src)="\/fonts\//);
+});
+
 test("metadata origin is fixed even with untrusted forwarding headers", async () => {
   const response = await render({
     headers: {
@@ -139,6 +188,21 @@ test("metadata origin is fixed even with untrusted forwarding headers", async ()
 
   assert.match(html, new RegExp(`${productionOrigin.replaceAll(".", "\\.")}/`));
   assert.doesNotMatch(html, /evil\.example/);
+
+  const docsResponse = await render({
+    pathname: "/docs",
+    headers: {
+      host: "evil.example",
+      "x-forwarded-host": "evil.example",
+      "x-forwarded-proto": "http",
+    },
+  });
+  const docsHtml = await docsResponse.text();
+  assert.match(
+    docsHtml,
+    new RegExp(`${productionOrigin.replaceAll(".", "\\.")}/docs`),
+  );
+  assert.doesNotMatch(docsHtml, /evil\.example/);
 });
 
 test("applies security headers and immutable font caching", async () => {
@@ -330,9 +394,11 @@ test("build output is portable and routes assets through the Worker", async () =
 });
 
 test("keeps the shipped site frontend-only and free of starter residue", async () => {
-  const [page, layout, css, packageJson, hosting, viteConfig, worker] =
+  const [page, docsPage, docsContent, layout, css, packageJson, hosting, viteConfig, worker] =
     await Promise.all([
       readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
+      readFile(new URL("../app/docs/page.tsx", import.meta.url), "utf8"),
+      readFile(new URL("../app/docs/content.ts", import.meta.url), "utf8"),
       readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
       readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
       readFile(new URL("../package.json", import.meta.url), "utf8"),
@@ -346,10 +412,19 @@ test("keeps the shipped site frontend-only and free of starter residue", async (
   assert.match(layout, /themeColor:\s*"#111712"/);
   assert.match(css, /prefers-reduced-motion:\s*reduce/);
   assert.match(css, /focus-visible/);
+  assert.match(
+    css,
+    /#docs-language-en:checked\s*~\s*\.guide-panels\s+\.guide-panel-en/,
+  );
+  assert.doesNotMatch(
+    css,
+    /\.language-radio\s*\{[^}]*display:\s*none/s,
+    "Language radios must remain keyboard-focusable without JavaScript",
+  );
   assert.match(css, /\.brand-label\s*\{\s*display:\s*none/);
   assert.doesNotMatch(css, /\.site-header nav > a[^}]*display:\s*none/s);
   assert.doesNotMatch(
-    `${page}\n${layout}\n${packageJson}\n${viteConfig}\n${worker}`,
+    `${page}\n${docsPage}\n${docsContent}\n${layout}\n${packageJson}\n${viteConfig}\n${worker}`,
     /codex-preview|_sites-preview|react-loading-skeleton|drizzle|site-creator|vinext-starter/i,
   );
   assert.deepEqual(JSON.parse(hosting), {
@@ -370,8 +445,16 @@ test("keeps the shipped site frontend-only and free of starter residue", async (
 test("ships compact social and crawler assets", async () => {
   const socialImage = new URL("../worker/static/og.jpg", import.meta.url);
   const imageStats = await stat(socialImage);
+  const sitemap = await readFile(
+    new URL("../worker/static/sitemap.xml", import.meta.url),
+    "utf8",
+  );
 
   assert.ok(imageStats.size < 200_000, `og.jpg is ${imageStats.size} bytes`);
+  assert.match(
+    sitemap,
+    /<loc>https:\/\/agent-terminal-status\.gldtestuser\.chatgpt\.site\/docs<\/loc>/,
+  );
   await Promise.all([
     access(new URL("../worker/static/robots.txt", import.meta.url)),
     access(new URL("../worker/static/sitemap.xml", import.meta.url)),

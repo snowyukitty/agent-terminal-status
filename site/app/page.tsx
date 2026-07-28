@@ -68,7 +68,7 @@ export default function Home() {
         </a>
         <nav aria-label="Primary navigation">
           <a href="#install">Install</a>
-          <a href="#principles">Principles</a>
+          <a href="/docs">Guide</a>
           <a href="#roadmap">Roadmap</a>
           <a className="nav-github" href={repositoryUrl}>
             GitHub <span aria-hidden="true">↗</span>
@@ -392,6 +392,9 @@ export default function Home() {
             <a className="button button-light" href="#install">
               Install agent-terminal-status
             </a>
+            <a className="text-link" href="/docs">
+              How it works · EN / 日本語 / 繁體中文
+            </a>
             <a className="text-link" href={repositoryUrl}>
               Star on GitHub <span aria-hidden="true">↗</span>
             </a>
@@ -408,6 +411,7 @@ export default function Home() {
         </div>
         <p>One quiet line that tells you where your coding agent is working.</p>
         <div className="footer-links">
+          <a href="/docs">How it works</a>
           <a href={`${repositoryUrl}/blob/main/LICENSE`}>MIT License</a>
           <a href={`${repositoryUrl}/blob/main/CONTRIBUTING.md`}>Contribute</a>
           <a href={repositoryUrl}>GitHub ↗</a>

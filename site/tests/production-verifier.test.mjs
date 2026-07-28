@@ -67,6 +67,23 @@ function recordingFetch(requests) {
       );
     }
 
+    if (requestUrl.pathname === "/docs") {
+      return response(
+        [
+          `<link rel="canonical" href="${productionOrigin}/docs">`,
+          '<link rel="stylesheet" href="/delivery/assets/site.css">',
+          '<link rel="stylesheet" href="/delivery/assets/docs.css">',
+          '<script src="/delivery/assets/site.js"></script>',
+          '<script src="/delivery/assets/other.js"></script>',
+          '<script src="/delivery/assets/docs.js"></script>',
+          '<article lang="en">workspace.current_dir · git -C · 150 ms</article>',
+          '<article lang="ja">五つの慎重な動作</article>',
+          '<article lang="zh-Hant">五個謹慎步驟</article>',
+        ].join(""),
+        { contentType: "text/html" },
+      );
+    }
+
     if (requestUrl.pathname === "/delivery/assets/site.css") {
       return response(
         [
@@ -77,9 +94,17 @@ function recordingFetch(requests) {
       );
     }
 
+    if (requestUrl.pathname === "/delivery/assets/docs.css") {
+      return response(".guide { display: block; }", {
+        cacheControl: immutable,
+        contentType: "text/css",
+      });
+    }
+
     if (
       requestUrl.pathname === "/delivery/assets/site.js" ||
-      requestUrl.pathname === "/delivery/assets/other.js"
+      requestUrl.pathname === "/delivery/assets/other.js" ||
+      requestUrl.pathname === "/delivery/assets/docs.js"
     ) {
       return response("export {};", {
         cacheControl: immutable,
@@ -181,6 +206,8 @@ function assertProbeContract(requests) {
   assert.deepEqual(
     deliveryRequests.map(({ url }) => url.pathname).sort(),
     [
+      "/delivery/assets/docs.css",
+      "/delivery/assets/docs.js",
       "/delivery/assets/other.js",
       "/delivery/assets/site.css",
       "/delivery/assets/site.js",
@@ -200,6 +227,13 @@ function assertProbeContract(requests) {
     backingRequest?.url.searchParams.get("production-smoke"),
     token,
     "The provider backing-route diagnostic must not use a stale cache key",
+  );
+
+  const docsRequest = requests.find(({ url }) => url.pathname === "/docs");
+  assert.equal(
+    docsRequest?.url.searchParams.get("production-smoke"),
+    token,
+    "The three-language guide must use the run's probe token",
   );
 
   const rootRequests = requests.filter(({ url }) => url.pathname === "/");

@@ -2,10 +2,12 @@
 
 The public product page for `agent-terminal-status`.
 
-It is a single responsive page with no database, authentication, analytics, or
-application backend. The source uses Next-compatible components so the Sites
-build can produce a deployable Cloudflare Worker, but all product content and
-interaction remain frontend-only.
+It contains a responsive product landing page and a server-rendered,
+three-language field guide at `/docs`, with no database, authentication,
+analytics, or application backend. The source uses Next-compatible components
+so the Sites build can produce a deployable Cloudflare Worker, but all product
+interaction remains local and stateless. The Worker only renders public pages
+and serves their assets.
 
 ## Development
 
@@ -27,17 +29,20 @@ only the site's resolved `dist` and `.vinext` generated directories so deleted
 or renamed assets cannot survive from an earlier build or cache.
 
 `npm run verify:production` checks the deployed origin rather than the local
-Worker alone. It verifies the document, Worker-delivered stylesheet, embedded
-public assets, font routes, cache policy, fixed-origin metadata, and the
-blocked legacy font and build-internal paths. It also reports whether the
-hosting provider exposes the generated asset store directly, without treating
-that implementation path as the website's delivery interface.
+Worker alone. It verifies the landing document, three-language `/docs` guide,
+Worker-delivered stylesheets and scripts, embedded public assets, font routes,
+cache policy, fixed-origin metadata, and the blocked legacy font and
+build-internal paths. It also reports whether the hosting provider exposes the
+generated asset store directly, without treating that implementation path as
+the website's delivery interface.
 Each mutable-path probe uses a unique query token so an earlier CDN response
 cannot masquerade as the current deployment.
 
 ## Structure
 
 - `app/page.tsx` — product content and semantic layout
+- `app/docs/page.tsx` — server-rendered three-language visual field guide
+- `app/docs/content.ts` — English, Japanese, and Traditional Chinese guide copy
 - `app/globals.css` — responsive visual system
 - `app/CopyCommand.tsx` — small clipboard enhancement
 - `worker/static/` — favicon, crawler files, compact social preview, and

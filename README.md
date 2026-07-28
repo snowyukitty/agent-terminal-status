@@ -3,6 +3,7 @@
 One quiet line that tells you where your coding agent is working.
 
 [Website](https://agent-terminal-status.gldtestuser.chatgpt.site) ·
+[How it works — English · 日本語 · 繁體中文](https://agent-terminal-status.gldtestuser.chatgpt.site/docs) ·
 [Quick start](#quick-start) ·
 [Roadmap](ROADMAP.md)
 
@@ -24,7 +25,9 @@ machine identity are secondary: they appear when space allows and disappear
 before the path on narrow terminals.
 
 Explore the [public project website](https://agent-terminal-status.gldtestuser.chatgpt.site);
-its frontend-only source lives in [`site/`](site/README.md).
+the visual [three-language field guide](https://agent-terminal-status.gldtestuser.chatgpt.site/docs)
+follows one status line from Claude payload to safe output. Their frontend-only
+source lives in [`site/`](site/README.md).
 
 ## Quick start
 
