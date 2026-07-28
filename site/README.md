@@ -14,19 +14,22 @@ and serves their assets.
 Requires Node.js 22.13 or newer.
 
 ```sh
-npm install
+npm ci --ignore-scripts
 npm run dev
+npm run typecheck
 npm test
 npm run lint
 npm run verify:production
 ```
 
-`npm test` builds the production output and verifies rendered HTML, core copy,
-accessibility markers, fixed-origin metadata, security headers, portable asset
-paths, the self-hosted font delivery route, canonical repository links, and the
-absence of starter or persistence scaffolding. Production builds first remove
-only the site's resolved `dist` and `.vinext` generated directories so deleted
-or renamed assets cannot survive from an earlier build or cache.
+`npm run typecheck` validates the application, Worker, and Vite query imports
+without writing incremental compiler state. `npm test` runs that check, builds
+the production output, and verifies rendered HTML, core copy, accessibility
+markers, fixed-origin metadata, security headers, portable asset paths, the
+self-hosted font delivery route, canonical repository links, and the absence of
+starter or persistence scaffolding. Production builds first remove only the
+site's resolved `dist` and `.vinext` generated directories so deleted or
+renamed assets cannot survive from an earlier build or cache.
 
 `npm run verify:production` checks the deployed origin rather than the local
 Worker alone. It verifies the landing document, four-language `/docs` guide,
@@ -49,6 +52,7 @@ cannot masquerade as the current deployment.
   self-hosted Geist variable fonts bundled into the Worker
 - `worker/index.ts` — embedded static delivery, generated-asset routing, and
   one response security policy
+- `vite-env.d.ts` — Vite query-import types used by standalone type checking
 - `scripts/verify-production.mjs` — read-only deployment smoke test
 - `tests/production-verifier.test.mjs` — request-level probe freshness contract
 - `tests/rendered-html.test.mjs` — production-render checks

@@ -21,15 +21,18 @@ Related open reports add implementation evidence:
 - [#76411 — Custom status lines do not render in macOS fullscreen TUI mode](https://github.com/anthropics/claude-code/issues/76411)
 
 The public feature template requires a duplicate search. A new broad "workspace
-identity layer" issue would fragment the strongest immediate request. The
-recommended eventual action is a focused evidence comment on #70132 while it
-remains open and relevant, with cross-references to #73162 for default project
-identity, #74344 for monorepo behavior, and #79794 for linked worktrees.
+identity layer" issue would fragment the strongest immediate request. After a
+fresh duplicate and thread review, a focused
+[engineering-evidence comment](https://github.com/anthropics/claude-code/issues/70132#issuecomment-5098948504)
+was posted to #70132 on 2026-07-28, with cross-references to #73162 for default
+project identity, #74344 for monorepo behavior, and #79794 for linked
+worktrees.
 
-The duplicate snapshot was refreshed on 2026-07-28: #70132, #73162, #81298,
-and #74344 were still open with no comments or reactions. #70132 received the
-`stale` label on 2026-07-21; the other three did not yet carry it. The
-repository's public
+In the pre-comment snapshot that day, #70132, #73162, #81298, and #74344 were
+open with no comments or reactions. Immediately after the contribution,
+#70132 remained open and unlocked with that one substantive comment; its
+`stale` label from 2026-07-21 was still present. The other three requests
+remained open without the label. The repository's public
 [lifecycle code](https://github.com/anthropics/claude-code/blob/main/scripts/issue-lifecycle.ts)
 marks inactive issues stale and its
 [sweep](https://github.com/anthropics/claude-code/blob/main/scripts/sweep.ts)
@@ -37,13 +40,11 @@ closes a stale issue after 14 days, but explicitly skips closure when a human
 adds a comment after the stale label or the issue reaches ten thumbs-up
 reactions.
 
-That mechanism does not justify a keepalive. Post only when the comment adds
-substantive prototype or real-use evidence. Recheck the threads and labels
-immediately before posting; if #70132 has closed, evaluate #73162, #74344, and
-the then-current duplicate landscape instead of mechanically opening another
+That mechanism does not justify a keepalive. Do not add a second comment merely
+to change lifecycle state. Recheck the threads and labels before any future
+contribution; if #70132 has closed, evaluate #73162, #74344, and the
+then-current duplicate landscape instead of mechanically opening another
 request.
-
-Do not submit the draft below until real-use evidence is available.
 
 ## Problem
 
@@ -151,60 +152,45 @@ Use a compact comparison containing:
 For each, show the current Claude Code UI and the same session with persistent
 identity. Do not include private real paths or hostnames.
 
-## Ready-to-adapt comment for #70132
+## Posted comment and follow-up rule
 
-> I built and tested a small external prototype for this exact workflow. The
-> most useful behavior was not just the Git root: it was
-> `repo-name/actual/relative/cwd`, sourced from `workspace.current_dir`.
->
-> That distinguishes parallel sessions in different monorepo subfolders while
-> remaining compact at repository root. Outside Git it falls back to a
-> home-relative path. At narrow widths it middle-shortens the path and removes
-> optional branch/machine segments first.
->
-> The prototype covers Windows PowerShell, macOS/Linux through Python, linked
-> worktrees, detached HEAD, non-Git directories, spaces, non-ASCII paths, and
-> missing/slow Git. Repeated complete-command batches on one reference machine
-> measured Python p95 at 63–66 ms and the no-dependency Windows PowerShell
-> adapter at 279–306 ms. These are local ranges, not universal claims.
->
-> A native segment could be much smaller and faster because Claude Code already
-> owns workspace and Git state. My suggested minimum is: always-visible actual
-> cwd, repository-relative when applicable, adaptive middle shortening, and an
-> existing config path to disable/replace it. Hostname can remain opt-in.
->
-> This is engineering prototype evidence, not a prevalence or real-use claim.
->
-> Prototype, tests, and measurements:
-> https://github.com/snowyukitty/agent-terminal-status
->
-> Visual guide: https://agent-terminal-status.gldtestuser.chatgpt.site/docs
->
-> Related default-identity request: #73162. Related monorepo-subfolder request:
-> #74344. The linked-worktree badge case in #79794 is another example where
-> visible identity can disagree with the actual session directory.
+The 2026-07-28
+[comment on #70132](https://github.com/anthropics/claude-code/issues/70132#issuecomment-5098948504)
+records the tested engineering result: actual repository-relative cwd was more
+useful than Git root alone, the path survives narrow widths and collector
+failures, and a native segment could avoid external-process costs. It links the
+public prototype, tests, measurements, visual guide, and focused related
+issues.
 
-Keep the posted comment shorter if the issue has evolved. Re-read the full
-thread immediately before posting and avoid repeating newer evidence.
+The comment explicitly says, “This is engineering prototype evidence, not a
+prevalence or real-use claim.” Preserve that boundary. The next upstream action
+is to wait: answer a maintainer question if one arrives, or add a future
+follow-up only when R1-R4 provide genuinely new human evidence. Re-read the
+live thread and duplicate landscape immediately before doing either.
 
 ## Evidence gate
 
 The technical prototype gate is complete: renderer and installer tests,
 Windows PowerShell 5.1 and PowerShell 7 coverage, Git and non-Git edge cases,
-complete-process latency measurements, duplicate research, and a sanitized
-public repository and demo are all available.
+complete-process latency measurements, duplicate research, a sanitized public
+repository and demo, and the focused engineering-evidence comment are all
+available.
 
 Human observations are tracked once in the canonical
 [public release evidence gate](release-evidence.md):
 
 - R1 supplies the week of regular multi-session use;
 - R2 supplies real Claude Code screenshots on Windows and POSIX;
-- R3 supplies SSH, WSL, and container observations.
+- R3 supplies SSH, WSL, and container observations;
+- R4 supplies the hostname-visibility decision from real use.
 
-Do not duplicate their completion state here. After R1-R3 are complete, perform
-one upstream-specific final step:
+Do not duplicate their completion state here. They are gates for a public
+release and for any future real-use claim, not retroactive prerequisites for
+the already posted, narrowly scoped engineering comment.
 
-- [ ] Re-read the live duplicate threads and labels immediately before posting.
+- [x] Re-read the live duplicate threads and labels before the 2026-07-28
+  engineering-evidence comment.
+- [ ] Re-read them again before any future upstream comment or proposal.
 
-Until R1-R3 and the fresh thread review are complete, this document is
-preparation, not a claim that an upstream submission is ready.
+Until R1-R4 are complete, this document does not claim broad real-use evidence
+or public-release readiness.

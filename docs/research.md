@@ -141,14 +141,14 @@ native goal:
 | [#71582](https://github.com/anthropics/claude-code/issues/71582) | Persistent status in Desktop |
 | [#77829](https://github.com/anthropics/claude-code/issues/77829) | Custom status-line parity in the VS Code extension |
 
-On the 2026-07-28 snapshot, #70132, #73162, #81298, and #74344 were open with
-no comments or reactions. #70132 had carried the `stale` label since
-2026-07-21; the other three did not. #79794 is especially useful evidence
-because session cwd metadata is correct while Claude's visible linked-worktree
-identity is not. The correct upstream action is to strengthen an existing
-focused issue rather than create another one, but the target must be
-re-evaluated if lifecycle automation closes the earliest request before the
-real-use evidence is ready.
+In the pre-comment snapshot on 2026-07-28, #70132, #73162, #81298, and #74344
+were open with no comments or reactions. #70132 had carried the `stale` label
+since 2026-07-21; the other three did not. Later that day, after a fresh
+duplicate and thread review, a focused
+[engineering-evidence comment](https://github.com/anthropics/claude-code/issues/70132#issuecomment-5098948504)
+was posted to #70132. It explicitly did not claim prevalence or real-use
+evidence. #79794 remains especially useful supporting evidence because session
+cwd metadata is correct while Claude's visible linked-worktree identity is not.
 
 ## Public contribution surface
 
@@ -170,9 +170,12 @@ The credible path for this feature is therefore:
 
 1. use the prototype in realistic parallel sessions;
 2. publish reproducible demo, compatibility, and performance evidence;
-3. add a focused comment to the earliest matching issue;
+3. preserve the focused engineering comment already added to the earliest
+   matching issue without posting keepalives;
 4. offer implementation details without assuming the private TUI architecture;
-5. make a documentation contribution only if maintainers request or accept that
+5. follow up only with substantive real-use evidence or in response to a
+   maintainer;
+6. make a documentation contribution only if maintainers request or accept that
    surface.
 
 A speculative pull request against the public repository is not currently a

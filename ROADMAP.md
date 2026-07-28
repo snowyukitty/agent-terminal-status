@@ -54,10 +54,13 @@ Acceptance for a new default signal:
 
 ## Upstream Claude Code
 
-The immediate upstream action is **not** a new issue. Equivalent open requests
-already exist. The next useful contribution is a concise evidence comment on
-the earliest focused issue after real usage data and public demo links exist.
-See [docs/upstream.md](docs/upstream.md).
+A focused engineering-evidence
+[comment](https://github.com/anthropics/claude-code/issues/70132#issuecomment-5098948504)
+was posted to the earliest matching request on 2026-07-28 after a fresh
+duplicate and thread review. It deliberately claims prototype evidence, not
+prevalence or real-use evidence. Do not open a duplicate issue or add a
+keepalive comment; follow up only with substantive human observations or in
+response to a maintainer. See [docs/upstream.md](docs/upstream.md).
 
 The smallest native proposal should focus on the actual current directory,
 using repository-relative context and adaptive shortening. Branch and hostname

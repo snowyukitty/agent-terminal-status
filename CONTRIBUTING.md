@@ -8,12 +8,13 @@ source is reliable, and what should happen when it is missing or slow.
 
 ## Development setup
 
-There are no project dependencies to install.
+The status-line adapters have no third-party runtime dependencies.
 
 - Python 3.9 or newer exercises the portable adapter and installer.
 - Windows PowerShell 5.1 exercises the first-class Windows adapter.
 - PowerShell 7 is also tested where available.
 - Git is optional at runtime but required for Git scenario tests.
+- The website under `site/` requires Node.js 22.13 or newer.
 
 Run:
 
@@ -34,6 +35,19 @@ sh scripts/install.sh --config-dir /tmp/ats-claude-test
 
 Use a disposable `--config-dir` or `-ConfigDir` when testing installers. Do not
 point tests at a real Claude configuration.
+
+For website changes:
+
+```sh
+cd site
+npm ci --ignore-scripts
+npm test
+npm run lint
+npm audit --audit-level=high
+```
+
+The website test command includes standalone TypeScript checking, a production
+build, and the request- and render-level test suites.
 
 ## Change guidelines
 

@@ -78,5 +78,6 @@ these occurs:
 - the intended final release revision changes runtime behavior.
 
 Hostname preference feedback is product-decision input, not an automatic code
-change. When the gate is complete, perform the upstream-specific fresh
-duplicate and thread review described in [upstream.md](upstream.md).
+change. Before any future real-use follow-up or new upstream submission,
+perform the fresh duplicate and thread review described in
+[upstream.md](upstream.md).

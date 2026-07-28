@@ -1,5 +1,6 @@
 /** Cloudflare Worker entry point for the agent-terminal-status website. */
 import handler from "vinext/server/app-router-entry";
+import type { ExecutionContextLike } from "vinext/shims/request-context";
 
 import appleTouchIconData from "./static/apple-touch-icon.png?inline";
 import faviconData from "./static/favicon.ico?inline";
@@ -149,7 +150,7 @@ export default {
   async fetch(
     request: Request,
     environment: AssetsEnvironment,
-    context: ExecutionContext,
+    context: ExecutionContextLike,
   ) {
     const url = new URL(request.url);
     const assetMethod = request.method === "GET" || request.method === "HEAD";
